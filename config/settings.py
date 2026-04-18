@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     tiktok_api_token: str = ""
 
     # API Keys / Model Providers
-    echotik_api_key: str = ""
     echotik_username: str = "260413847753057272"
     echotik_password: str = "7cfe6ddae8134f2c9ff48d521d68c411"
     echotik_base_url: str = "https://open.echotik.live/api/v3"

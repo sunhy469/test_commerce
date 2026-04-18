@@ -13,7 +13,7 @@ from config.settings import get_settings
 class EchoTikClient:
     def __init__(self):
         settings = get_settings()
-        self.api_key = settings.echotik_api_key
+
         self.username = settings.echotik_username
         self.password = settings.echotik_password
         self.base_url = settings.echotik_base_url.rstrip("/")
@@ -24,12 +24,6 @@ class EchoTikClient:
             token = base64.b64encode(f"{self.username}:{self.password}".encode("utf-8")).decode("utf-8")
             return {
                 "Authorization": f"Basic {token}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            }
-        if self.api_key:
-            return {
-                "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
             }
