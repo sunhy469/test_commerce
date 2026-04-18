@@ -62,29 +62,23 @@ async def search_products(req: SearchRequest):
 
 @monitor_router.post("/ranking")
 async def get_ranking(req: RankingRequest):
-    """获取排行榜数据（按销量/飙升 + 日/周/月 + 国家）"""
-    # 优先实时/离线数据源
-    fresh_products = await monitor_agent.search(keyword="", limit=req.limit, country=req.country, category=req.category)
-    if fresh_products:
-        products = [p.model_dump() for p in fresh_products]
-        if req.rank_type == "growth":
-            products = sorted(products, key=lambda x: x.get("growth_rate", 0), reverse=True)
-        elif req.time_range == "daily":
-            products = sorted(products, key=lambda x: x.get("daily_sales", 0), reverse=True)
-        elif req.time_range == "weekly":
-            products = sorted(products, key=lambda x: x.get("weekly_sales", 0), reverse=True)
-        else:
-            products = sorted(products, key=lambda x: x.get("sales_count", 0), reverse=True)
-        store.save_products(products)
-        return {"products": products[:req.limit], "total": len(products[:req.limit]), "rank_type": req.rank_type, "time_range": req.time_range, "country": req.country}
+    """获取排行榜数据：仅从数据库读取（定时任务入库后查询）"""
+    sea_countries = {"ID", "TH", "VN", "MY", "PH", "SG"}
+    country = req.country.strip().upper() if req.country else ""
 
-    # 回退数据库缓存
     with get_conn() as conn:
         query = "SELECT * FROM products WHERE 1=1"
         params = []
-        if req.country:
+
+        if country:
+            if country not in sea_countries:
+                return {"products": [], "total": 0, "rank_type": req.rank_type, "time_range": req.time_range, "country": country}
             query += " AND country=?"
-            params.append(req.country)
+            params.append(country)
+        else:
+            query += " AND country IN ({})".format(",".join(["?"] * len(sea_countries)))
+            params.extend(sorted(sea_countries))
+
         if req.category:
             query += " AND category LIKE ?"
             params.append(f"%{req.category}%")
@@ -103,11 +97,7 @@ async def get_ranking(req: RankingRequest):
         rows = conn.execute(query, params).fetchall()
         products = [dict(r) for r in rows]
 
-    if not products:
-        mock_products = await monitor_agent.search(keyword="", limit=req.limit, country=req.country, category=req.category)
-        products = [p.model_dump() for p in mock_products]
-
-    return {"products": products, "total": len(products), "rank_type": req.rank_type, "time_range": req.time_range, "country": req.country}
+    return {"products": products, "total": len(products), "rank_type": req.rank_type, "time_range": req.time_range, "country": country}
 
 
 @monitor_router.post("/analyze")

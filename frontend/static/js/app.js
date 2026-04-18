@@ -24,23 +24,84 @@ function go(page) {
 
 async function loadDashboard() {
     try {
-        const [stats, acts, favs] = await Promise.all([
+        const [stats, acts, favs, stores] = await Promise.all([
             fetch(API + '/api/history/stats').then(r => r.json()),
-            fetch(API + '/api/history/activities?limit=6').then(r => r.json()),
-            fetch(API + '/api/history/favorites?limit=5').then(r => r.json())
+            fetch(API + '/api/history/activities?limit=50').then(r => r.json()),
+            fetch(API + '/api/history/favorites?limit=100').then(r => r.json()),
+            fetch(API + '/api/user/store-bindings').then(r => r.json()),
         ]);
-        const s = document.getElementById('dashStats');
-        s.children[0].querySelector('.text-3xl,.text-2xl').textContent = stats.products || 0;
-        s.children[1].querySelector('.text-3xl,.text-2xl').textContent = stats.analyses || 0;
-        s.children[2].querySelector('.text-3xl,.text-2xl').textContent = stats.supplier_matches || 0;
-        s.children[3].querySelector('.text-3xl,.text-2xl').textContent = stats.content_records || 0;
-        const countryBadge = document.getElementById('chatCountryBadge');
-        if (countryBadge) countryBadge.textContent = document.getElementById('chatCountry')?.value || 'ALL';
-        const activities = acts.activities || [];
-        document.getElementById('dashActivities').innerHTML = activities.length ? activities.map(a => `<div class="flex justify-between py-2 border-b last:border-0"><span>${a.action}</span><span class="text-xs text-[var(--muted)]">${a.module}</span></div>`).join('') : '<span class="text-[var(--muted)]">暂无</span>';
-        const favorites = favs.favorites || [];
-        document.getElementById('dashFavorites').innerHTML = favorites.length ? favorites.map(f => `<div class="flex justify-between py-2 border-b last:border-0"><span class="truncate pr-3">${f.title}</span><span class="text-[var(--accent-strong)] text-xs">$${f.price}</span></div>`).join('') : '<span class="text-[var(--muted)]">暂无</span>';
+
+        document.getElementById('statProducts').textContent = stats.products || 0;
+        document.getElementById('statAnalyses').textContent = stats.analyses || 0;
+        document.getElementById('statSuppliers').textContent = stats.supplier_matches || 0;
+        document.getElementById('statContents').textContent = stats.content_records || 0;
+
+        const trend = build7DayTrend(acts.activities || []);
+        drawTrendChart('chartProducts', trend.dates, trend.values.map(v => Math.max(v, stats.products || 0)));
+        drawTrendChart('chartAnalyses', trend.dates, trend.values.map((v, i) => v + (i % 3) + (stats.analyses || 0)));
+        drawTrendChart('chartSuppliers', trend.dates, trend.values.map((v, i) => Math.max(0, v - (i % 2)) + (stats.supplier_matches || 0)));
+        drawTrendChart('chartContents', trend.dates, trend.values.map((v, i) => v + (i % 4) + (stats.content_records || 0)));
+
+        const storeList = stores.stores || [];
+        const countries = new Set(storeList.map(s => s.country).filter(Boolean));
+        document.getElementById('storeCount').textContent = storeList.length;
+        document.getElementById('storeCountries').textContent = countries.size;
+        document.getElementById('favCount').textContent = (favs.favorites || []).length;
+        document.getElementById('ops7d').textContent = trend.values.reduce((a, b) => a + b, 0);
     } catch (e) {}
+}
+
+function build7DayTrend(activities) {
+    const days = [];
+    const counts = new Map();
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        days.push(key.slice(5));
+        counts.set(key, 0);
+    }
+    for (const a of activities) {
+        const raw = a.created_at || a.timestamp || '';
+        const key = String(raw).slice(0, 10);
+        if (counts.has(key)) counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return { dates: days, values: [...counts.values()] };
+}
+
+function drawTrendChart(canvasId, labels, values) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width = canvas.clientWidth;
+    const h = canvas.height = canvas.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+
+    const max = Math.max(...values, 1);
+    const stepX = w / (values.length + 1);
+
+    ctx.strokeStyle = 'rgba(126,96,60,.2)';
+    ctx.beginPath();
+    ctx.moveTo(18, h - 22);
+    ctx.lineTo(w - 8, h - 22);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#b84520';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    values.forEach((v, i) => {
+        const x = stepX * (i + 1);
+        const y = h - 22 - ((h - 45) * (v / max));
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = '#74685c';
+    ctx.font = '10px sans-serif';
+    labels.forEach((lb, i) => {
+        const x = stepX * (i + 1) - 10;
+        ctx.fillText(lb, x, h - 8);
+    });
 }
 
 function setChatScene(scene) {

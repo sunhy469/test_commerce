@@ -67,12 +67,12 @@
             <div class="text-xs text-[var(--muted)] mt-1">跨境电商 AI 工作台</div>
         </div>
         <div class="px-3 py-4 space-y-1">
-            <button onclick="go('chat')" class="nav-item active w-full text-left px-3 py-2 text-sm font-bold" data-page="chat"><i class="iconfont icon-xiaoxi mr-2"></i>聊天</button>
-            <button onclick="go('dashboard')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="dashboard"><i class="iconfont icon-zonglan mr-2"></i>总览</button>
-            <button onclick="go('ranking')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="ranking"><i class="iconfont icon-paihang mr-2"></i>热销排行榜</button>
-            <button onclick="go('supply')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="supply"><i class="iconfont icon-gongyinglian mr-2"></i>供应链</button>
-            <button onclick="go('content')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="content"><i class="iconfont icon-neirong mr-2"></i>内容生成</button>
-            <button onclick="go('purchase')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="purchase"><i class="iconfont icon-caigou mr-2"></i>采购管理</button>
+            <button onclick="go('chat')" class="nav-item active w-full text-left px-3 py-2 text-sm font-bold" data-page="chat"><span class="mr-2">💬</span>聊天</button>
+            <button onclick="go('dashboard')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="dashboard"><span class="mr-2">📊</span>总览</button>
+            <button onclick="go('ranking')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="ranking"><span class="mr-2">🏆</span>热销排行榜</button>
+            <button onclick="go('supply')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="supply"><span class="mr-2">🚚</span>供应链</button>
+            <button onclick="go('content')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="content"><span class="mr-2">🧠</span>内容生成</button>
+            <button onclick="go('purchase')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="purchase"><span class="mr-2">🛒</span>采购管理</button>
         </div>
     </aside>
     <main class="main-area">
@@ -90,24 +90,26 @@
 <div id="page-dashboard" class="page">
     <div class="w-full p-4 md:p-6 space-y-5">
         <section class="glass rounded-[28px] p-6">
-            <div class="text-xs text-[var(--accent-strong)] mb-3">一个对话框调度热销榜、1688找货、详情页、商品图</div>
-            <h1 class="serif-title text-3xl md:text-5xl font-black leading-tight mb-4">从找热销商品到去 1688 找货卖，一键完成</h1>
-            <p class="text-[var(--muted)] text-sm md:text-base leading-7 max-w-4xl">支持语音输入和文字输入。可以通过一句话自动调动各模块，也可以进入单独模块进行精细化操作。关键动作前加入确认交互，流程更完整。</p>
-            <div class="flex flex-wrap gap-3 mt-6">
-                <button onclick="go('chat')" class="px-5 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">进入全自动选品执行台</button>
-                <button onclick="go('ranking')" class="px-5 py-3 rounded-full soft-card text-sm font-semibold">查看各国热销榜</button>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="serif-title text-3xl font-black">店铺数据总览</h2>
+                <span class="text-xs text-[var(--muted)]">横轴：日期 · 纵轴：数据</span>
+            </div>
+            <div id="dashStatsCharts" class="grid md:grid-cols-2 gap-4">
+                <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm mb-2">📦 监控商品总数 <span id="statProducts" class="ml-2 text-[var(--accent-strong)]">0</span></div><canvas id="chartProducts" height="110"></canvas></div>
+                <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm mb-2">🧪 选品分析次数 <span id="statAnalyses" class="ml-2 text-emerald-700">0</span></div><canvas id="chartAnalyses" height="110"></canvas></div>
+                <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm mb-2">🤝 供应链匹配 <span id="statSuppliers" class="ml-2 text-amber-700">0</span></div><canvas id="chartSuppliers" height="110"></canvas></div>
+                <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm mb-2">🎨 内容生成记录 <span id="statContents" class="ml-2 text-violet-700">0</span></div><canvas id="chartContents" height="110"></canvas></div>
             </div>
         </section>
-        <section class="grid md:grid-cols-4 gap-4" id="dashStats">
-            <div class="soft-card rounded-[24px] p-5"><div class="text-xs text-[var(--muted)]">监控商品总数</div><div class="text-3xl font-extrabold text-[var(--accent-strong)] mt-2">-</div></div>
-            <div class="soft-card rounded-[24px] p-5"><div class="text-xs text-[var(--muted)]">选品分析次数</div><div class="text-3xl font-extrabold text-emerald-700 mt-2">-</div></div>
-            <div class="soft-card rounded-[24px] p-5"><div class="text-xs text-[var(--muted)]">供应链匹配</div><div class="text-3xl font-extrabold text-amber-700 mt-2">-</div></div>
-            <div class="soft-card rounded-[24px] p-5"><div class="text-xs text-[var(--muted)]">内容生成记录</div><div class="text-3xl font-extrabold text-violet-700 mt-2">-</div></div>
-        </section>
-        <section class="grid lg:grid-cols-3 gap-4">
-            <div class="soft-card rounded-[24px] p-5"><h3 class="serif-title text-xl font-bold mb-4">最近操作</h3><div id="dashActivities" class="space-y-3 text-sm text-[var(--muted)]">加载中...</div></div>
-            <div class="soft-card rounded-[24px] p-5"><h3 class="serif-title text-xl font-bold mb-4">快捷指令</h3><div class="space-y-3"><button onclick="quickCommand('帮我找美国近7天热销的手机壳，并匹配1688同款供应商')" class="w-full text-left p-3 rounded-2xl border">热销手机壳 + 1688 同款</button><button onclick="quickCommand('请帮我生成这个产品的商品图，风格偏高级、主体突出，目标市场是英国')" class="w-full text-left p-3 rounded-2xl border">英国市场商品图</button><button onclick="quickCommand('帮我生成这张图片的产品详情图')" class="w-full text-left p-3 rounded-2xl border">一句话生成详情图</button></div></div>
-            <div class="soft-card rounded-[24px] p-5"><h3 class="serif-title text-xl font-bold mb-4">我的收藏</h3><div id="dashFavorites" class="space-y-3 text-sm text-[var(--muted)]">加载中...</div></div>
+
+        <section class="glass rounded-[28px] p-6">
+            <h3 class="serif-title text-2xl font-black mb-4">店铺运营数据</h3>
+            <div id="storeMetrics" class="grid md:grid-cols-4 gap-4">
+                <div class="soft-card rounded-[20px] p-4"><div class="text-xs text-[var(--muted)]">已绑定店铺</div><div id="storeCount" class="text-2xl font-black mt-2">0</div></div>
+                <div class="soft-card rounded-[20px] p-4"><div class="text-xs text-[var(--muted)]">活跃国家站点</div><div id="storeCountries" class="text-2xl font-black mt-2">0</div></div>
+                <div class="soft-card rounded-[20px] p-4"><div class="text-xs text-[var(--muted)]">收藏商品数</div><div id="favCount" class="text-2xl font-black mt-2">0</div></div>
+                <div class="soft-card rounded-[20px] p-4"><div class="text-xs text-[var(--muted)]">近7天操作数</div><div id="ops7d" class="text-2xl font-black mt-2">0</div></div>
+            </div>
         </section>
     </div>
 </div>
@@ -166,15 +168,13 @@
             </div>
             <div class="space-y-3">
                 <div class="flex flex-wrap gap-2" id="countryChips">
-                    <span class="chip on" onclick="setFilter('country','')" data-v="">🌍 全部</span>
-                    <span class="chip" onclick="setFilter('country','US')" data-v="US">🇺🇸 美国</span>
-                    <span class="chip" onclick="setFilter('country','GB')" data-v="GB">🇬🇧 英国</span>
+                    <span class="chip on" onclick="setFilter('country','')" data-v="">🌏 东南亚全部</span>
                     <span class="chip" onclick="setFilter('country','ID')" data-v="ID">🇮🇩 印尼</span>
                     <span class="chip" onclick="setFilter('country','TH')" data-v="TH">🇹🇭 泰国</span>
-                    <span class="chip" onclick="setFilter('country','JP')" data-v="JP">🇯🇵 日本</span>
-                    <span class="chip" onclick="setFilter('country','KR')" data-v="KR">🇰🇷 韩国</span>
                     <span class="chip" onclick="setFilter('country','VN')" data-v="VN">🇻🇳 越南</span>
+                    <span class="chip" onclick="setFilter('country','MY')" data-v="MY">🇲🇾 马来西亚</span>
                     <span class="chip" onclick="setFilter('country','PH')" data-v="PH">🇵🇭 菲律宾</span>
+                    <span class="chip" onclick="setFilter('country','SG')" data-v="SG">🇸🇬 新加坡</span>
                 </div>
                 <div class="flex flex-wrap gap-2 items-center">
                     <div class="flex gap-2" id="rankChips"><span class="chip on" onclick="setFilter('rank','sales')" data-v="sales">销量榜</span><span class="chip" onclick="setFilter('rank','growth')" data-v="growth">飙升榜</span></div>
