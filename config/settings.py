@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     seed_image_model: str = "Seed-2.0"
     seed_video_model: str = "Seedance-2.0"
 
+    # OpenAI 兼容模型（例如 DeepSeek）
+    openai_base_url: str = "https://api.deepseek.com"
+    openai_api_key: str = ""
+    model: str = "deepseek-chat"
+
     # 支付 - 支付宝
     alipay_app_id: str = ""
     alipay_private_key: str = ""
