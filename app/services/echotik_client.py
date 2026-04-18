@@ -9,7 +9,6 @@ import httpx
 from app.models.schemas import TikTokProduct
 from config.settings import get_settings
 
-# Mock 数据 - 多国家、多品类、含图片和销量数据
 MOCK_PRODUCTS = [
     TikTokProduct(product_id="us_001", title="Sunset Glow Blush Palette - Summer Vibes Collection", price=12.99,
         sales_count=15800, daily_sales=520, weekly_sales=3640, likes=189000, comments=4200,
@@ -120,36 +119,44 @@ class EchoTikClient:
         """从 sale_props 字段中提取第一张图片链接。"""
         if not sale_props_raw:
             return ""
+
+        def _first_http_url(value) -> str:
+            if isinstance(value, str):
+                value = value.strip()
+                return value if value.startswith("http") else ""
+            if isinstance(value, dict):
+                for key in ("url", "image", "image_url", "img", "cover"):
+                    found = _first_http_url(value.get(key))
+                    if found:
+                        return found
+                for key in ("sale_prop_values", "images", "img_list", "urls", "image_list"):
+                    found = _first_http_url(value.get(key))
+                    if found:
+                        return found
+                return ""
+            if isinstance(value, list):
+                for item in value:
+                    found = _first_http_url(item)
+                    if found:
+                        return found
+            return ""
+
         try:
             sale_props = sale_props_raw
             if isinstance(sale_props_raw, str):
-                sale_props = json.loads(sale_props_raw)
-            if isinstance(sale_props, dict):
-                sale_props = [sale_props]
-            if not isinstance(sale_props, list):
-                return ""
+                sale_props = sale_props_raw.strip()
+                # 接口偶尔会返回二次 JSON 编码的字符串，最多解码两次。
+                for _ in range(2):
+                    if not isinstance(sale_props, str):
+                        break
+                    try:
+                        sale_props = json.loads(sale_props)
+                    except Exception:
+                        break
 
-            for item in sale_props:
-                if not isinstance(item, dict):
-                    continue
-                for key in ("image", "img", "image_url", "cover", "url"):
-                    val = item.get(key)
-                    if isinstance(val, str) and val.startswith("http"):
-                        return val
-                for key in ("sale_prop_values", "images", "img_list", "urls", "image_list"):
-                    val = item.get(key)
-                    if isinstance(val, list):
-                        for v in val:
-                            if isinstance(v, str) and v.startswith("http"):
-                                return v
-                            if isinstance(v, dict):
-                                for nested_key in ("url", "image", "image_url"):
-                                    nested_val = v.get(nested_key)
-                                    if isinstance(nested_val, str) and nested_val.startswith("http"):
-                                        return nested_val
+            return _first_http_url(sale_props)
         except Exception:
             return ""
-        return ""
 
     def _build_product_from_product_list(self, row: dict, region: str) -> TikTokProduct:
         title = row.get("product_name") or row.get("desc_detail") or "TikTok Product"
@@ -161,7 +168,7 @@ class EchoTikClient:
 
         image_url = (
             self._parse_sale_props_image(row.get("sale_props"))
-            or row.get("cover_url")
+            or self._parse_cover_url(row.get("cover_url"))
             or f"https://picsum.photos/seed/{quote(str(row.get('product_id') or title))}/400/400"
         )
         weekly_sales = self._to_int(row.get("total_sale_7d_cnt"), 0)
