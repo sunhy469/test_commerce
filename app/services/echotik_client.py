@@ -116,6 +116,86 @@ class EchoTikClient:
             return ""
         return ""
 
+    def _parse_sale_props_image(self, sale_props_raw) -> str:
+        """从 sale_props 字段中提取第一张图片链接。"""
+        if not sale_props_raw:
+            return ""
+        try:
+            sale_props = sale_props_raw
+            if isinstance(sale_props_raw, str):
+                sale_props = json.loads(sale_props_raw)
+            if isinstance(sale_props, dict):
+                sale_props = [sale_props]
+            if not isinstance(sale_props, list):
+                return ""
+
+            for item in sale_props:
+                if not isinstance(item, dict):
+                    continue
+                for key in ("image", "img", "image_url", "cover", "url"):
+                    val = item.get(key)
+                    if isinstance(val, str) and val.startswith("http"):
+                        return val
+                for key in ("images", "img_list", "urls", "image_list"):
+                    val = item.get(key)
+                    if isinstance(val, list):
+                        for v in val:
+                            if isinstance(v, str) and v.startswith("http"):
+                                return v
+                            if isinstance(v, dict):
+                                for nested_key in ("url", "image", "image_url"):
+                                    nested_val = v.get(nested_key)
+                                    if isinstance(nested_val, str) and nested_val.startswith("http"):
+                                        return nested_val
+        except Exception:
+            return ""
+        return ""
+
+    def _build_product_from_product_list(self, row: dict, region: str) -> TikTokProduct:
+        title = row.get("product_name") or row.get("desc_detail") or "TikTok Product"
+        price = self._to_float(row.get("spu_avg_price"), 0)
+        if price <= 0:
+            min_price = self._to_float(row.get("min_price"), 0)
+            max_price = self._to_float(row.get("max_price"), 0)
+            price = round((min_price + max_price) / 2, 2) if min_price and max_price else (min_price or max_price or 0)
+
+        image_url = (
+            self._parse_sale_props_image(row.get("sale_props"))
+            or row.get("cover_url")
+            or f"https://picsum.photos/seed/{quote(str(row.get('product_id') or title))}/400/400"
+        )
+        weekly_sales = self._to_int(row.get("total_sale_7d_cnt"), 0)
+        daily_sales = self._to_int(row.get("total_sale_1d_cnt"), 0)
+        if daily_sales <= 0 and weekly_sales > 0:
+            daily_sales = max(weekly_sales // 7, 1)
+
+        total_sales = self._to_int(row.get("total_sale_cnt"), 0)
+        growth_rate = 0.0
+        sale_30d = self._to_int(row.get("total_sale_30d_cnt"), 0)
+        if sale_30d > 0:
+            growth_rate = round((weekly_sales / sale_30d) * 100, 2)
+
+        return TikTokProduct(
+            product_id=str(row.get("product_id") or title),
+            title=title,
+            price=price,
+            currency="USD",
+            sales_count=total_sales,
+            daily_sales=daily_sales,
+            weekly_sales=weekly_sales,
+            sales_trend_flag=self._to_int(row.get("sales_trend_flag"), 0),
+            total_gmv=self._to_float(row.get("total_sale_gmv_amt"), 0),
+            weekly_gmv=self._to_float(row.get("total_sale_gmv_7d_amt"), 0),
+            likes=self._to_int(row.get("total_views_cnt"), 0),
+            comments=self._to_int(row.get("review_count"), 0),
+            shop_name=str(row.get("seller_id") or ""),
+            category=str(row.get("category_id") or ""),
+            product_url=f"https://www.tiktok.com/shop/pdp/{quote(str(row.get('product_id') or ''))}",
+            image_url=image_url,
+            country=row.get("region") or region,
+            growth_rate=growth_rate,
+        )
+
     def _build_product_from_influencer_and_goods(self, influencer: dict, goods: dict, region: str) -> TikTokProduct:
         product_name = goods.get("product_name") or influencer.get("nick_name") or influencer.get("unique_id") or "TikTok Product"
         cover_url = self._parse_cover_url(goods.get("cover_url", "")) or influencer.get("avatar", "")
@@ -288,52 +368,46 @@ class EchoTikClient:
     async def search_trending_products(
         self, keyword: str = "", category: str = "", country: str = "", days: int = 7, limit: int = 20
     ) -> list[TikTokProduct]:
-        """搜索 TikTok 热销商品。关键词优先走实时 creator 查询；无关键词则走 EchoTik 离线达人列表+商品列表。"""
+        """搜索 TikTok 热销商品（使用 /echotik/product/list）。"""
         del days
         region = country or "US"
 
         if self.use_mock:
             return self._mock_products(keyword=keyword, category=category, country=country, limit=limit)
 
-        if keyword:
-            real_product = await self.get_creator_product_by_unique_id(unique_id=keyword, region=region)
-            if real_product:
-                products = [real_product]
-                if category:
-                    products = [p for p in products if category.lower() in p.category.lower()] or products
-                return products[:limit]
+        ranked_products: list[TikTokProduct] = []
+        params = {
+            "region": region,
+            "page_num": 5,
+            "page_size": 5,
+            "sales_trend_flag": 1,
+            "sort_type": 1,
+            "product_sort_field": 4,  # total_sale_7d_cnt
+        }
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(
+                    f"{self.base_url}/echotik/product/list",
+                    headers=self._get_headers(),
+                    params=params,
+                )
+                resp.raise_for_status()
+                payload = resp.json()
+                if payload.get("code") != 0:
+                    return self._mock_products(keyword=keyword, category=category, country=country, limit=limit)
+                rows = payload.get("data") or []
+                for row in rows:
+                    product = self._build_product_from_product_list(row, region=region)
+                    ranked_products.append(product)
+        except Exception:
             return self._mock_products(keyword=keyword, category=category, country=country, limit=limit)
 
-        influencers = await self.get_influencer_list(region=region, page_num=1, page_size=min(limit, 10), sort_field=6)
-        ranked_products: list[TikTokProduct] = []
-        for influencer in influencers:
-            goods = await self.get_influencer_products(user_id=str(influencer.get("user_id") or ""), page_num=1, page_size=1)
-            if goods:
-                ranked_products.append(self._build_product_from_influencer_and_goods(influencer, goods[0], region))
-            else:
-                ranked_products.append(
-                    TikTokProduct(
-                        product_id=str(influencer.get("user_id") or influencer.get("unique_id") or ""),
-                        title=influencer.get("nick_name") or influencer.get("unique_id") or "TikTok Creator",
-                        price=self._to_float(influencer.get("avg_30d_price"), 0),
-                        sales_count=self._to_int(influencer.get("total_sale_cnt"), 0),
-                        daily_sales=max(self._to_int(influencer.get("total_video_sale_30d_cnt"), 0) // 30, 0),
-                        weekly_sales=max(self._to_int(influencer.get("total_video_sale_30d_cnt"), 0) // 4, 0),
-                        likes=self._to_int(influencer.get("total_digg_cnt"), 0),
-                        comments=self._to_int(influencer.get("total_comments_cnt"), 0),
-                        shop_name=influencer.get("nick_name") or influencer.get("unique_id") or "",
-                        category=influencer.get("category") or "TikTok Shop",
-                        product_url=f"https://www.tiktok.com/@{quote(str(influencer.get('unique_id') or ''))}",
-                        image_url=influencer.get("avatar") or f"https://picsum.photos/seed/{quote(str(influencer.get('unique_id') or 'creator'))}/400/400",
-                        country=region,
-                        growth_rate=float(self._to_int(influencer.get("total_followers_7d_cnt"), 0)),
-                    )
-                )
-            if len(ranked_products) >= limit:
-                break
-
+        if keyword:
+            lower = keyword.lower()
+            ranked_products = [p for p in ranked_products if lower in p.title.lower()]
         if category:
             ranked_products = [p for p in ranked_products if category.lower() in p.category.lower()] or ranked_products
+
         return ranked_products[:limit] if ranked_products else self._mock_products(keyword=keyword, category=category, country=country, limit=limit)
 
     async def get_product_detail(self, product_id: str) -> TikTokProduct | None:

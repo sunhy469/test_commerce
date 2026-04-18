@@ -35,9 +35,9 @@ def save_products(products: list[dict]):
             conn.execute(
                 """INSERT OR REPLACE INTO products
                 (product_id, title, price, currency, sales_count, daily_sales, weekly_sales,
-                 likes, comments, shop_name, category, product_url, image_url,
+                 sales_trend_flag, total_gmv, weekly_gmv, likes, comments, shop_name, category, product_url, image_url,
                  country, growth_rate, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     p.get("product_id", ""),
                     p.get("title", ""),
@@ -46,6 +46,9 @@ def save_products(products: list[dict]):
                     p.get("sales_count", 0),
                     p.get("daily_sales", 0),
                     p.get("weekly_sales", 0),
+                    p.get("sales_trend_flag", 0),
+                    p.get("total_gmv", 0),
+                    p.get("weekly_gmv", 0),
                     p.get("likes", 0),
                     p.get("comments", 0),
                     p.get("shop_name", ""),
