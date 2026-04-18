@@ -9,6 +9,7 @@ from app.api.routes import monitor_router, supply_router, content_router, purcha
 from app.api.dashboard import dashboard_router
 from app.api.scraper import scraper_router
 from app.api.chat import chat_router
+from app.api.skills import skills_router
 
 
 # 定时任务：每6小时同步库存
@@ -95,6 +96,7 @@ app.include_router(dashboard_router)
 app.include_router(scraper_router)
 app.include_router(chat_router)
 app.include_router(user_router)
+app.include_router(skills_router)
 
 # 静态文件
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
