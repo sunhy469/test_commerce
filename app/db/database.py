@@ -6,6 +6,61 @@ from contextlib import contextmanager
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "trade_agents.db")
 SEA_REGION_CODES = ("ID", "MY", "PH", "SG", "TH", "VN")
+SEA_TABLE_COLUMNS_SQL = """
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id TEXT UNIQUE,
+    product_name TEXT,
+    image_url TEXT,
+    region TEXT,
+    total_sale_1d_cnt INTEGER DEFAULT 0,
+    total_sale_7d_cnt INTEGER DEFAULT 0,
+    total_sale_15d_cnt INTEGER DEFAULT 0,
+    total_sale_30d_cnt INTEGER DEFAULT 0,
+    total_sale_gmv_1d_amt REAL DEFAULT 0,
+    total_sale_gmv_7d_amt REAL DEFAULT 0,
+    total_sale_gmv_15d_amt REAL DEFAULT 0,
+    total_sale_gmv_30d_amt REAL DEFAULT 0,
+    total_live_sale_1d_cnt INTEGER DEFAULT 0,
+    total_live_sale_7d_cnt INTEGER DEFAULT 0,
+    total_live_sale_15d_cnt INTEGER DEFAULT 0,
+    total_live_sale_30d_cnt INTEGER DEFAULT 0,
+    total_live_sale_gmv_1d_amt REAL DEFAULT 0,
+    total_live_sale_gmv_7d_amt REAL DEFAULT 0,
+    total_live_sale_gmv_15d_amt REAL DEFAULT 0,
+    total_live_sale_gmv_30d_amt REAL DEFAULT 0,
+    total_video_sale_1d_cnt INTEGER DEFAULT 0,
+    total_video_sale_7d_cnt INTEGER DEFAULT 0,
+    total_video_sale_15d_cnt INTEGER DEFAULT 0,
+    total_video_sale_30d_cnt INTEGER DEFAULT 0,
+    total_video_sale_gmv_1d_amt REAL DEFAULT 0,
+    total_video_sale_gmv_7d_amt REAL DEFAULT 0,
+    total_video_sale_gmv_15d_amt REAL DEFAULT 0,
+    total_video_sale_gmv_30d_amt REAL DEFAULT 0,
+    total_views_1d_cnt INTEGER DEFAULT 0,
+    total_views_7d_cnt INTEGER DEFAULT 0,
+    total_views_15d_cnt INTEGER DEFAULT 0,
+    total_views_30d_cnt INTEGER DEFAULT 0,
+    total_live_1d_cnt INTEGER DEFAULT 0,
+    total_live_7d_cnt INTEGER DEFAULT 0,
+    total_live_15d_cnt INTEGER DEFAULT 0,
+    total_live_30d_cnt INTEGER DEFAULT 0,
+    total_video_1d_cnt INTEGER DEFAULT 0,
+    total_video_7d_cnt INTEGER DEFAULT 0,
+    total_video_15d_cnt INTEGER DEFAULT 0,
+    total_video_30d_cnt INTEGER DEFAULT 0,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+"""
+SEA_TABLE_REQUIRED_COLUMNS = {
+    "product_id",
+    "product_name",
+    "image_url",
+    "region",
+    "total_sale_1d_cnt",
+    "total_sale_7d_cnt",
+    "total_sale_15d_cnt",
+    "total_sale_30d_cnt",
+    "updated_at",
+}
 
 
 def _drop_column_if_exists(conn: sqlite3.Connection, table_name: str, column_name: str):
@@ -59,6 +114,45 @@ def _drop_column_if_exists(conn: sqlite3.Connection, table_name: str, column_nam
 def get_db_path():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     return DB_PATH
+
+
+def _rebuild_region_table(conn: sqlite3.Connection, table_name: str):
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        (table_name,),
+    ).fetchone()
+    backup_name = f"{table_name}_legacy"
+    if exists:
+        conn.execute(f"DROP TABLE IF EXISTS {backup_name}")
+        conn.execute(f"ALTER TABLE {table_name} RENAME TO {backup_name}")
+    conn.execute(f"CREATE TABLE {table_name} ({SEA_TABLE_COLUMNS_SQL})")
+    if exists:
+        old_columns = [row[1] for row in conn.execute(f"PRAGMA table_info({backup_name})").fetchall()]
+        new_columns = [row[1] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()]
+        shared_columns = [c for c in new_columns if c in old_columns and c != "id"]
+        if shared_columns:
+            cols_sql = ", ".join(shared_columns)
+            conn.execute(
+                f"INSERT OR REPLACE INTO {table_name} ({cols_sql}) SELECT {cols_sql} FROM {backup_name}"
+            )
+        conn.execute(f"DROP TABLE IF EXISTS {backup_name}")
+
+
+def _ensure_region_table(conn: sqlite3.Connection, table_name: str):
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        (table_name,),
+    ).fetchone()
+    if not exists:
+        conn.execute(f"CREATE TABLE {table_name} ({SEA_TABLE_COLUMNS_SQL})")
+        return
+
+    columns = [row[1] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()]
+    unique_index_ok = conn.execute(
+        f"SELECT 1 FROM pragma_index_list('{table_name}') WHERE [unique]=1"
+    ).fetchone()
+    if not SEA_TABLE_REQUIRED_COLUMNS.issubset(set(columns)) or not unique_index_ok:
+        _rebuild_region_table(conn, table_name)
 
 
 @contextmanager
@@ -253,82 +347,44 @@ def init_db():
                                                                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                            );
 
-                           CREATE TABLE IF NOT EXISTS content_jobs (
-                                                                       id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                                       job_id TEXT UNIQUE,
-                                                                       job_type TEXT,
-                                                                       provider TEXT,
-                                                                       model_name TEXT,
-                                                                       product_title TEXT,
-                                                                       prompt TEXT,
-                                                                       aspect_ratio TEXT,
-                                                                       status TEXT DEFAULT 'draft',
-                                                                       preview_url TEXT,
-                                                                       result_payload TEXT,
-                                                                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                                                       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                           );
+        CREATE TABLE IF NOT EXISTS content_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_id TEXT UNIQUE,
+            job_type TEXT,
+            provider TEXT,
+            model_name TEXT,
+            product_title TEXT,
+            prompt TEXT,
+            aspect_ratio TEXT,
+            status TEXT DEFAULT 'draft',
+            preview_url TEXT,
+            result_payload TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS payment_channels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel_code TEXT UNIQUE,
+            channel_name TEXT,
+            channel_group TEXT,
+            currency TEXT,
+            status TEXT DEFAULT 'enabled',
+            note TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
 
-                           CREATE TABLE IF NOT EXISTS payment_channels (
-                                                                           id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                                           channel_code TEXT UNIQUE,
-                                                                           channel_name TEXT,
-                                                                           channel_group TEXT,
-                                                                           currency TEXT,
-                                                                           status TEXT DEFAULT 'enabled',
-                                                                           note TEXT,
-                                                                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                           );
-                           """)
-
-        for region in SEA_REGION_CODES:
-            table_name = f"products_{region.lower()}"
-            conn.execute(
-                f"""CREATE TABLE IF NOT EXISTS {table_name} (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    product_id TEXT UNIQUE,
-                    product_name TEXT,
-                    image_url TEXT,
-                    region TEXT,
-                    total_sale_1d_cnt INTEGER DEFAULT 0,
-                    total_sale_7d_cnt INTEGER DEFAULT 0,
-                    total_sale_15d_cnt INTEGER DEFAULT 0,
-                    total_sale_30d_cnt INTEGER DEFAULT 0,
-                    total_sale_gmv_1d_amt REAL DEFAULT 0,
-                    total_sale_gmv_7d_amt REAL DEFAULT 0,
-                    total_sale_gmv_15d_amt REAL DEFAULT 0,
-                    total_sale_gmv_30d_amt REAL DEFAULT 0,
-                    total_live_sale_1d_cnt INTEGER DEFAULT 0,
-                    total_live_sale_7d_cnt INTEGER DEFAULT 0,
-                    total_live_sale_15d_cnt INTEGER DEFAULT 0,
-                    total_live_sale_30d_cnt INTEGER DEFAULT 0,
-                    total_live_sale_gmv_1d_amt REAL DEFAULT 0,
-                    total_live_sale_gmv_7d_amt REAL DEFAULT 0,
-                    total_live_sale_gmv_15d_amt REAL DEFAULT 0,
-                    total_live_sale_gmv_30d_amt REAL DEFAULT 0,
-                    total_video_sale_1d_cnt INTEGER DEFAULT 0,
-                    total_video_sale_7d_cnt INTEGER DEFAULT 0,
-                    total_video_sale_15d_cnt INTEGER DEFAULT 0,
-                    total_video_sale_30d_cnt INTEGER DEFAULT 0,
-                    total_video_sale_gmv_1d_amt REAL DEFAULT 0,
-                    total_video_sale_gmv_7d_amt REAL DEFAULT 0,
-                    total_video_sale_gmv_15d_amt REAL DEFAULT 0,
-                    total_video_sale_gmv_30d_amt REAL DEFAULT 0,
-                    total_views_1d_cnt INTEGER DEFAULT 0,
-                    total_views_7d_cnt INTEGER DEFAULT 0,
-                    total_views_15d_cnt INTEGER DEFAULT 0,
-                    total_views_30d_cnt INTEGER DEFAULT 0,
-                    total_live_1d_cnt INTEGER DEFAULT 0,
-                    total_live_7d_cnt INTEGER DEFAULT 0,
-                    total_live_15d_cnt INTEGER DEFAULT 0,
-                    total_live_30d_cnt INTEGER DEFAULT 0,
-                    total_video_1d_cnt INTEGER DEFAULT 0,
-                    total_video_7d_cnt INTEGER DEFAULT 0,
-                    total_video_15d_cnt INTEGER DEFAULT 0,
-                    total_video_30d_cnt INTEGER DEFAULT 0,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )"""
-            )
+        expected_tables = {f"products_{region.lower()}" for region in SEA_REGION_CODES}
+        for table_name in expected_tables:
+            _ensure_region_table(conn, table_name)
+        existing_product_tables = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'products_%'"
+        ).fetchall()
+        for row in existing_product_tables:
+            table_name = row[0]
+            if table_name not in expected_tables and table_name != "products":
+                conn.execute(f"DROP TABLE IF EXISTS {table_name}")
 
         _drop_column_if_exists(conn, "products", "video_views")
         _drop_column_if_exists(conn, "content_records", "video_json")
