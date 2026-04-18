@@ -5,8 +5,10 @@ let voice = null;
 let pendingChatMessage = '';
 let chatScene = 'auto';
 let chatTaskItems = [];
+let localChatSessions = [];
+let activeSessionId = '';
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); });
 
 function go(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -22,23 +24,84 @@ function go(page) {
 
 async function loadDashboard() {
     try {
-        const [stats, acts, favs] = await Promise.all([
+        const [stats, acts, favs, stores] = await Promise.all([
             fetch(API + '/api/history/stats').then(r => r.json()),
-            fetch(API + '/api/history/activities?limit=6').then(r => r.json()),
-            fetch(API + '/api/history/favorites?limit=5').then(r => r.json())
+            fetch(API + '/api/history/activities?limit=50').then(r => r.json()),
+            fetch(API + '/api/history/favorites?limit=100').then(r => r.json()),
+            fetch(API + '/api/user/store-bindings').then(r => r.json()),
         ]);
-        const s = document.getElementById('dashStats');
-        s.children[0].querySelector('.text-3xl,.text-2xl').textContent = stats.products || 0;
-        s.children[1].querySelector('.text-3xl,.text-2xl').textContent = stats.analyses || 0;
-        s.children[2].querySelector('.text-3xl,.text-2xl').textContent = stats.supplier_matches || 0;
-        s.children[3].querySelector('.text-3xl,.text-2xl').textContent = stats.content_records || 0;
-        const countryBadge = document.getElementById('chatCountryBadge');
-        if (countryBadge) countryBadge.textContent = document.getElementById('chatCountry')?.value || 'ALL';
-        const activities = acts.activities || [];
-        document.getElementById('dashActivities').innerHTML = activities.length ? activities.map(a => `<div class="flex justify-between py-2 border-b last:border-0"><span>${a.action}</span><span class="text-xs text-[var(--muted)]">${a.module}</span></div>`).join('') : '<span class="text-[var(--muted)]">暂无</span>';
-        const favorites = favs.favorites || [];
-        document.getElementById('dashFavorites').innerHTML = favorites.length ? favorites.map(f => `<div class="flex justify-between py-2 border-b last:border-0"><span class="truncate pr-3">${f.title}</span><span class="text-[var(--accent-strong)] text-xs">$${f.price}</span></div>`).join('') : '<span class="text-[var(--muted)]">暂无</span>';
+
+        document.getElementById('statProducts').textContent = stats.products || 0;
+        document.getElementById('statAnalyses').textContent = stats.analyses || 0;
+        document.getElementById('statSuppliers').textContent = stats.supplier_matches || 0;
+        document.getElementById('statContents').textContent = stats.content_records || 0;
+
+        const trend = build7DayTrend(acts.activities || []);
+        drawTrendChart('chartProducts', trend.dates, trend.values.map(v => Math.max(v, stats.products || 0)));
+        drawTrendChart('chartAnalyses', trend.dates, trend.values.map((v, i) => v + (i % 3) + (stats.analyses || 0)));
+        drawTrendChart('chartSuppliers', trend.dates, trend.values.map((v, i) => Math.max(0, v - (i % 2)) + (stats.supplier_matches || 0)));
+        drawTrendChart('chartContents', trend.dates, trend.values.map((v, i) => v + (i % 4) + (stats.content_records || 0)));
+
+        const storeList = stores.stores || [];
+        const countries = new Set(storeList.map(s => s.country).filter(Boolean));
+        document.getElementById('storeCount').textContent = storeList.length;
+        document.getElementById('storeCountries').textContent = countries.size;
+        document.getElementById('favCount').textContent = (favs.favorites || []).length;
+        document.getElementById('ops7d').textContent = trend.values.reduce((a, b) => a + b, 0);
     } catch (e) {}
+}
+
+function build7DayTrend(activities) {
+    const days = [];
+    const counts = new Map();
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        days.push(key.slice(5));
+        counts.set(key, 0);
+    }
+    for (const a of activities) {
+        const raw = a.created_at || a.timestamp || '';
+        const key = String(raw).slice(0, 10);
+        if (counts.has(key)) counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return { dates: days, values: [...counts.values()] };
+}
+
+function drawTrendChart(canvasId, labels, values) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width = canvas.clientWidth;
+    const h = canvas.height = canvas.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+
+    const max = Math.max(...values, 1);
+    const stepX = w / (values.length + 1);
+
+    ctx.strokeStyle = 'rgba(126,96,60,.2)';
+    ctx.beginPath();
+    ctx.moveTo(18, h - 22);
+    ctx.lineTo(w - 8, h - 22);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#b84520';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    values.forEach((v, i) => {
+        const x = stepX * (i + 1);
+        const y = h - 22 - ((h - 45) * (v / max));
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = '#74685c';
+    ctx.font = '10px sans-serif';
+    labels.forEach((lb, i) => {
+        const x = stepX * (i + 1) - 10;
+        ctx.fillText(lb, x, h - 8);
+    });
 }
 
 function setChatScene(scene) {
@@ -59,27 +122,19 @@ function quickCommand(text) {
 function autoPolishPrompt(raw, scene, country) {
     const text = (raw || '').trim();
     if (!text) return '';
-    const market = country || '全部国家';
-    const sceneHints = {
-        auto: '请自动补齐缺失信息，并按完整电商流程执行：先找热销商品，再匹配供应链，再生成适合售卖的详情页和商品图。',
-        ranking: '请自动补齐必要筛选条件，优先返回最值得关注的热销榜结果，并说明推荐原因。',
-        supply: '请自动识别商品关键词与用途，优先匹配可售卖、可比价的 1688 供应链。',
-        detail: '请自动完善卖点、受众、风格和转化文案，生成适合电商售卖的详情页内容。',
-        image: '请自动补全画面风格、背景、构图与售卖氛围，生成适合电商转化的商品图要求。'
-    };
-    const qualityHints = '输出时优先关注商品标题、价格、销量、供应链匹配度和最终售卖素材。';
-    return `${text}。目标市场：${market}。${sceneHints[scene] || sceneHints.auto}${qualityHints}`;
+    if (!country) return text;
+    return `${text}（目标市场：${country}）`;
 }
 
 function fillChatTemplate() {
     const input = document.getElementById('chatInput');
     const country = document.getElementById('chatCountry')?.value || '目标国家';
     const templates = {
-        auto: `帮我找${country}热销的___，自动匹配1688同款，并生成详情页和商品图`,
-        ranking: `帮我查看${country}月榜销量前10，并区分品类`,
-        supply: `在1688上帮我找到___的同款供应链，并按利润从高到低排序`,
-        detail: `请帮我生成这个产品的详情页，页面干净整洁，目标国家是${country}`,
-        image: `请帮我生成这个产品的商品图，风格干净整洁，目标国家是${country}`
+        auto: `请用简单方式解释：___`,
+        ranking: `帮我总结一下${country}市场最近的品类趋势`,
+        supply: `我想做一个新品，请给我 3 个选品方向`,
+        detail: `帮我把这段产品描述优化成更容易理解的文案`,
+        image: `给我一个商品主图提示词，风格干净简洁`
     };
     input.value = templates[chatScene] || templates.auto;
     input.focus();
@@ -97,28 +152,12 @@ function prepareChat() {
     const country = document.getElementById('chatCountry')?.value;
     const polished = autoPolishPrompt(msg, chatScene, country);
     pendingChatMessage = polished;
-    document.getElementById('confirmText').textContent = `将按「${sceneLabel(chatScene)}」模式执行，并自动补全提示词：${pendingChatMessage}`;
     const summary = document.getElementById('chatCommandSummary');
-    if (summary) summary.textContent = `待执行：${sceneLabel(chatScene)} / ${country || '全部国家'} / 已自动补全提示词`;
-    const countryBadge = document.getElementById('chatCountryBadge');
-    if (countryBadge) countryBadge.textContent = country || 'ALL';
-    const marketLabel = document.getElementById('chatMarketLabel');
-    if (marketLabel) marketLabel.textContent = country || '全部国家';
-    pushTaskQueue({ title: msg, status: 'queued', country: country || '全部国家' });
-    document.getElementById('confirmPanel').classList.remove('hidden');
-}
-
-function confirmSend() {
-    if (!pendingChatMessage) return;
-    document.getElementById('confirmPanel').classList.add('hidden');
+    if (summary) summary.textContent = `待发送：普通对话`;
     sendChat(pendingChatMessage);
     pendingChatMessage = '';
 }
 
-function cancelConfirm() {
-    pendingChatMessage = '';
-    document.getElementById('confirmPanel').classList.add('hidden');
-}
 
 function sceneLabel(scene) {
     return ({ auto:'自动模式', ranking:'热销榜', supply:'1688找货', detail:'详情页', image:'图像生成' })[scene] || '自动模式';
@@ -130,6 +169,7 @@ async function sendChat(overrideMsg = '') {
     if (!msg) return;
     inp.value = '';
     addMsg('user', msg);
+    persistChatMessage('user', msg);
     addMsg('ai', '思考中...', 'thinking');
     try {
         const res = await fetch(API + '/api/chat', {
@@ -146,10 +186,12 @@ async function sendChat(overrideMsg = '') {
         chatSession = d.session_id || chatSession;
         document.getElementById('thinking')?.remove();
         addMsg('ai', d.reply || '完成');
+        persistChatMessage('assistant', d.reply || '完成');
         if (d.data) showChatData(d.data);
     } catch (e) {
         document.getElementById('thinking')?.remove();
         addMsg('ai', '请求失败: ' + e.message);
+        persistChatMessage('assistant', '请求失败: ' + e.message);
     }
 }
 
@@ -327,6 +369,7 @@ function renderAutoProductCard(p, i) {
 
 let chatLoaded = false;
 async function loadChatHistory() {
+    renderLocalHistoryChips();
     if (chatLoaded) return; chatLoaded = true;
     try {
         const res = await fetch(API + '/api/chat/history?limit=20');
@@ -338,18 +381,6 @@ async function loadChatHistory() {
         const modeLabel = document.getElementById('chatModeLabel');
         if (modeLabel) modeLabel.textContent = sceneLabel(chatScene);
     } catch (e) {}
-}
-
-function startVoice() {
-    const btn = document.getElementById('voiceBtn');
-    if (voice) { voice.stop(); voice = null; btn.classList.remove('recording'); return; }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert('浏览器不支持语音，请用Chrome'); return; }
-    voice = new SR(); voice.lang = 'zh-CN'; voice.continuous = false; voice.interimResults = false;
-    btn.classList.add('recording');
-    voice.onresult = e => { document.getElementById('chatInput').value = e.results[0][0].transcript; btn.classList.remove('recording'); voice = null; };
-    voice.onerror = voice.onend = () => { btn.classList.remove('recording'); voice = null; };
-    voice.start();
 }
 
 // === Ranking ===
@@ -659,4 +690,147 @@ function setStatus(msg) {
     const el = document.getElementById('statusText');
     el.textContent = msg;
     setTimeout(() => el.textContent = '系统就绪', 2500);
+}
+
+
+function initLocalChats() {
+    try {
+        localChatSessions = JSON.parse(localStorage.getItem('ta_chat_sessions') || '[]');
+    } catch (e) {
+        localChatSessions = [];
+    }
+    if (!localChatSessions.length) {
+        startNewChat();
+        return;
+    }
+    activeSessionId = localChatSessions[0].id;
+    renderLocalHistoryChips();
+    restoreLocalSession(activeSessionId);
+}
+
+function startNewChat() {
+    const id = `chat_${Date.now()}`;
+    const item = { id, title: '新聊天', created_at: new Date().toISOString(), messages: [] };
+    localChatSessions.unshift(item);
+    localChatSessions = localChatSessions.slice(0, 20);
+    activeSessionId = id;
+    chatSession = '';
+    const box = document.getElementById('chatMessages');
+    if (box) box.innerHTML = `<div class="text-center text-[var(--muted)] py-16"><p class="serif-title text-4xl text-[var(--text)] mb-3">准备好了，随时开始</p><p class="text-sm">有问题，尽管问。</p></div>`;
+    document.getElementById('chatInput').value = '';
+    saveLocalChats();
+    renderLocalHistoryChips();
+    go('chat');
+}
+
+function persistChatMessage(role, content) {
+    if (!activeSessionId) return;
+    const session = localChatSessions.find(s => s.id === activeSessionId);
+    if (!session) return;
+    session.messages.push({ role, content, ts: Date.now() });
+    if (session.title === '新聊天' && role === 'user') {
+        session.title = content.slice(0, 18) || '新聊天';
+    }
+    saveLocalChats();
+    renderLocalHistoryChips();
+}
+
+function restoreLocalSession(sessionId) {
+    const session = localChatSessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const box = document.getElementById('chatMessages');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!session.messages.length) {
+        box.innerHTML = `<div class="text-center text-[var(--muted)] py-16"><p class="serif-title text-4xl text-[var(--text)] mb-3">准备好了，随时开始</p><p class="text-sm">有问题，尽管问。</p></div>`;
+        return;
+    }
+    session.messages.forEach(m => addMsg(m.role === 'user' ? 'user' : 'ai', m.content));
+}
+
+function renderLocalHistoryChips() {
+    const el = document.getElementById('chatHistoryList');
+    if (!el) return;
+    if (!localChatSessions.length) {
+        el.innerHTML = '<span class="text-[var(--muted)]">暂无历史会话</span>';
+        return;
+    }
+    el.innerHTML = localChatSessions.slice(0, 8).map(s => `
+        <div class="chat-history-item inline-flex items-center rounded-full border bg-white/70 ${s.id===activeSessionId ? 'active' : ''}"> 
+            <button onclick="switchChatSession('${s.id}')" class="px-3 py-1.5 text-xs">${escapeHtml(s.title)}</button>
+            <button onclick="deleteChatSession('${s.id}', event)" class="px-2 py-1.5 text-xs text-[var(--muted)] hover:text-[var(--accent-strong)]" title="删除会话">×</button>
+        </div>
+    `).join('');
+}
+
+function deleteChatSession(id, event) {
+    if (event) event.stopPropagation();
+    const idx = localChatSessions.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    const wasActive = activeSessionId === id;
+    localChatSessions.splice(idx, 1);
+
+    if (!localChatSessions.length) {
+        saveLocalChats();
+        startNewChat();
+        return;
+    }
+
+    if (wasActive) {
+        activeSessionId = localChatSessions[0].id;
+        restoreLocalSession(activeSessionId);
+    }
+
+    saveLocalChats();
+    renderLocalHistoryChips();
+}
+
+function switchChatSession(id) {
+    activeSessionId = id;
+    restoreLocalSession(id);
+    renderLocalHistoryChips();
+    go('chat');
+}
+
+function saveLocalChats() {
+    localStorage.setItem('ta_chat_sessions', JSON.stringify(localChatSessions));
+}
+
+async function loadSkills() {
+    const box = document.getElementById('skillsList');
+    if (!box) return;
+    try {
+        const res = await fetch(API + '/api/skills');
+        const d = await res.json();
+        const skills = d.skills || [];
+        box.innerHTML = skills.length ? skills.map(s => `<div class="rounded-xl border bg-white/70 p-2"><div class="font-semibold text-[12px]">${escapeHtml(s.name)}</div><div class="text-[11px] mt-1">${escapeHtml((s.scripts || []).join(', ') || 'script 待补充')}</div></div>`).join('') : '暂无技能';
+    } catch (e) {
+        box.innerHTML = '技能加载失败';
+    }
+}
+
+
+function toggleQuickTools() {
+    const menu = document.getElementById('quickToolsMenu');
+    if (!menu) return;
+    menu.classList.toggle('hidden');
+}
+
+function bindQuickAction(action) {
+    const menu = document.getElementById('quickToolsMenu');
+    if (menu) menu.classList.add('hidden');
+    if (action === 'upload') {
+        document.getElementById('chatImage')?.click();
+    }
+}
+
+function bindOutsideClickForTools() {
+    document.addEventListener('click', (event) => {
+        const menu = document.getElementById('quickToolsMenu');
+        if (!menu || menu.classList.contains('hidden')) return;
+        const trigger = event.target.closest('button');
+        if (event.target.closest('#quickToolsMenu')) return;
+        if (trigger && trigger.getAttribute('onclick') === 'toggleQuickTools()') return;
+        menu.classList.add('hidden');
+    });
 }
