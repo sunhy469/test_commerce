@@ -11,10 +11,6 @@ from app.api.scraper import scraper_router
 from app.api.chat import chat_router
 from app.api.skills import skills_router
 
-ENABLE_ECHOTIK_SYNC = os.getenv("ENABLE_ECHOTIK_SYNC", "false").lower() in {"1", "true", "yes", "on"}
-ECHOTIK_SYNC_PAGE_NUM = int(os.getenv("ECHOTIK_SYNC_PAGE_NUM", "5"))
-ECHOTIK_SYNC_PAGE_SIZE = int(os.getenv("ECHOTIK_SYNC_PAGE_SIZE", "5"))
-
 
 # 定时任务：每6小时同步库存
 async def schedule_inventory_sync():
@@ -43,8 +39,8 @@ async def schedule_echotik_product_sync():
             for region in EchoTikClient.SEA_REGION_CODES:
                 products = await client.fetch_region_products_for_storage(
                     region=region,
-                    page_num=ECHOTIK_SYNC_PAGE_NUM,
-                    page_size=ECHOTIK_SYNC_PAGE_SIZE,
+                    page_num=5,
+                    page_size=5,
                 )
                 saved_count = save_products_by_region(region, products)
                 print(f"[定时任务] EchoTik 同步完成: region={region}, saved={saved_count}")
@@ -57,26 +53,16 @@ async def schedule_echotik_product_sync():
 async def lifespan(_app: FastAPI):
     """应用生命周期管理"""
     import asyncio
-    from contextlib import suppress
-    tasks = []
     # 启动定时任务
-    tasks.append(asyncio.create_task(schedule_inventory_sync()))
+    task = asyncio.create_task(schedule_inventory_sync())
     # echotik_task = asyncio.create_task(schedule_echotik_product_sync())
     print("[系统] 库存同步定时任务已启动（每6小时执行）")
-    if ENABLE_ECHOTIK_SYNC:
-        tasks.append(asyncio.create_task(schedule_echotik_product_sync()))
-        print(
-            f"[系统] EchoTik 商品同步任务已启动（每6小时执行，page_num={ECHOTIK_SYNC_PAGE_NUM}, page_size={ECHOTIK_SYNC_PAGE_SIZE}）"
-        )
-    else:
-        print("[系统] EchoTik 商品同步任务已禁用（设置 ENABLE_ECHOTIK_SYNC=true 可开启）")
+    print("[系统] EchoTik 商品同步任务已注释，当前不自动请求最新数据")
     yield
     # 关闭定时任务
-    for task in tasks:
-        task.cancel()
-    for task in tasks:
-        with suppress(asyncio.CancelledError):
-            await task
+    task.cancel()
+    # if 'echotik_task' in locals():
+    #     echotik_task.cancel()
 
 
 app = FastAPI(
