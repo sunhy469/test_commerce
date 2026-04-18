@@ -10,9 +10,6 @@ class TikTokProduct(BaseModel):
     sales_count: int = 0
     daily_sales: int = 0
     weekly_sales: int = 0
-    sales_trend_flag: int = 0
-    total_gmv: float = 0.0
-    weekly_gmv: float = 0.0
     likes: int = 0
     comments: int = 0
     shop_name: str = ""

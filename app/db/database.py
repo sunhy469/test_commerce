@@ -25,9 +25,6 @@ def _drop_column_if_exists(conn: sqlite3.Connection, table_name: str, column_nam
                 sales_count INTEGER DEFAULT 0,
                 daily_sales INTEGER DEFAULT 0,
                 weekly_sales INTEGER DEFAULT 0,
-                sales_trend_flag INTEGER DEFAULT 0,
-                total_gmv REAL DEFAULT 0,
-                weekly_gmv REAL DEFAULT 0,
                 likes INTEGER DEFAULT 0,
                 comments INTEGER DEFAULT 0,
                 shop_name TEXT,
@@ -93,9 +90,6 @@ def init_db():
             sales_count INTEGER DEFAULT 0,
             daily_sales INTEGER DEFAULT 0,
             weekly_sales INTEGER DEFAULT 0,
-            sales_trend_flag INTEGER DEFAULT 0,
-            total_gmv REAL DEFAULT 0,
-            weekly_gmv REAL DEFAULT 0,
             likes INTEGER DEFAULT 0,
             comments INTEGER DEFAULT 0,
             shop_name TEXT,
@@ -288,14 +282,6 @@ def init_db():
 
         _drop_column_if_exists(conn, "products", "video_views")
         _drop_column_if_exists(conn, "content_records", "video_json")
-
-        product_columns = [row[1] for row in conn.execute("PRAGMA table_info(products)").fetchall()]
-        if "sales_trend_flag" not in product_columns:
-            conn.execute("ALTER TABLE products ADD COLUMN sales_trend_flag INTEGER DEFAULT 0")
-        if "total_gmv" not in product_columns:
-            conn.execute("ALTER TABLE products ADD COLUMN total_gmv REAL DEFAULT 0")
-        if "weekly_gmv" not in product_columns:
-            conn.execute("ALTER TABLE products ADD COLUMN weekly_gmv REAL DEFAULT 0")
 
         columns = [row[1] for row in conn.execute("PRAGMA table_info(orders)").fetchall()]
         if "customer_email" not in columns:

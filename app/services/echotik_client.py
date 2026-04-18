@@ -136,7 +136,7 @@ class EchoTikClient:
                     val = item.get(key)
                     if isinstance(val, str) and val.startswith("http"):
                         return val
-                for key in ("images", "img_list", "urls", "image_list"):
+                for key in ("sale_prop_values", "images", "img_list", "urls", "image_list"):
                     val = item.get(key)
                     if isinstance(val, list):
                         for v in val:
@@ -183,9 +183,6 @@ class EchoTikClient:
             sales_count=total_sales,
             daily_sales=daily_sales,
             weekly_sales=weekly_sales,
-            sales_trend_flag=self._to_int(row.get("sales_trend_flag"), 0),
-            total_gmv=self._to_float(row.get("total_sale_gmv_amt"), 0),
-            weekly_gmv=self._to_float(row.get("total_sale_gmv_7d_amt"), 0),
             likes=self._to_int(row.get("total_views_cnt"), 0),
             comments=self._to_int(row.get("review_count"), 0),
             shop_name=str(row.get("seller_id") or ""),
