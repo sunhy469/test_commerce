@@ -155,6 +155,85 @@ def save_products_by_region(region: str, products: list[dict]) -> int:
     return len(products)
 
 
+SEA_REGION_CODES = ("ID", "MY", "PH", "SG", "TH", "VN")
+SEA_METRIC_FIELDS = (
+    "total_sale_1d_cnt",
+    "total_sale_7d_cnt",
+    "total_sale_15d_cnt",
+    "total_sale_30d_cnt",
+    "total_sale_gmv_1d_amt",
+    "total_sale_gmv_7d_amt",
+    "total_sale_gmv_15d_amt",
+    "total_sale_gmv_30d_amt",
+    "total_live_sale_1d_cnt",
+    "total_live_sale_7d_cnt",
+    "total_live_sale_15d_cnt",
+    "total_live_sale_30d_cnt",
+    "total_live_sale_gmv_1d_amt",
+    "total_live_sale_gmv_7d_amt",
+    "total_live_sale_gmv_15d_amt",
+    "total_live_sale_gmv_30d_amt",
+    "total_video_sale_1d_cnt",
+    "total_video_sale_7d_cnt",
+    "total_video_sale_15d_cnt",
+    "total_video_sale_30d_cnt",
+    "total_video_sale_gmv_1d_amt",
+    "total_video_sale_gmv_7d_amt",
+    "total_video_sale_gmv_15d_amt",
+    "total_video_sale_gmv_30d_amt",
+    "total_views_1d_cnt",
+    "total_views_7d_cnt",
+    "total_views_15d_cnt",
+    "total_views_30d_cnt",
+    "total_live_1d_cnt",
+    "total_live_7d_cnt",
+    "total_live_15d_cnt",
+    "total_live_30d_cnt",
+    "total_video_1d_cnt",
+    "total_video_7d_cnt",
+    "total_video_15d_cnt",
+    "total_video_30d_cnt",
+)
+
+
+def _table_name_for_region(region: str) -> str:
+    normalized = (region or "").strip().lower()
+    if normalized not in {c.lower() for c in SEA_REGION_CODES}:
+        raise ValueError(f"unsupported region: {region}")
+    return f"products_{normalized}"
+
+
+def save_products_by_region(region: str, products: list[dict]) -> int:
+    table_name = _table_name_for_region(region)
+    if not products:
+        return 0
+
+    with get_conn() as conn:
+        for p in products:
+            values = {field: p.get(field, 0) for field in SEA_METRIC_FIELDS}
+            conn.execute(
+                f"""INSERT INTO {table_name}
+                (product_id, product_name, image_url, region, {", ".join(SEA_METRIC_FIELDS)}, updated_at)
+                VALUES (?, ?, ?, ?, {", ".join(["?"] * len(SEA_METRIC_FIELDS))}, ?)
+                ON CONFLICT(product_id) DO UPDATE SET
+                    product_name=excluded.product_name,
+                    image_url=excluded.image_url,
+                    region=excluded.region,
+                    {", ".join([f"{f}=excluded.{f}" for f in SEA_METRIC_FIELDS])},
+                    updated_at=excluded.updated_at
+                """,
+                (
+                    p.get("product_id", ""),
+                    p.get("product_name", p.get("title", "")),
+                    p.get("image_url", ""),
+                    p.get("region", region),
+                    *[values[f] for f in SEA_METRIC_FIELDS],
+                    datetime.now().isoformat(),
+                ),
+            )
+    return len(products)
+
+
 # ==================== 选品分析 ====================
 def save_analysis(keyword: str, category: str, analysis: dict, product_count: int):
     with get_conn() as conn:
