@@ -8,7 +8,7 @@ let chatTaskItems = [];
 let localChatSessions = [];
 let activeSessionId = '';
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); loadSkills(); initLocalChats(); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); });
 
 function go(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -755,4 +755,46 @@ async function loadSkills() {
     } catch (e) {
         box.innerHTML = '技能加载失败';
     }
+}
+
+
+function toggleQuickTools() {
+    const menu = document.getElementById('quickToolsMenu');
+    if (!menu) return;
+    menu.classList.toggle('hidden');
+}
+
+function bindQuickAction(action) {
+    const menu = document.getElementById('quickToolsMenu');
+    if (menu) menu.classList.add('hidden');
+    if (action === 'upload') {
+        document.getElementById('chatImage')?.click();
+        return;
+    }
+    if (action === 'voice') {
+        startVoice();
+        return;
+    }
+    if (action === 'template') {
+        fillChatTemplate();
+        return;
+    }
+    if (action === 'scene_auto') {
+        setChatScene('auto');
+        return;
+    }
+    if (action === 'scene_ranking') {
+        setChatScene('ranking');
+    }
+}
+
+function bindOutsideClickForTools() {
+    document.addEventListener('click', (event) => {
+        const menu = document.getElementById('quickToolsMenu');
+        if (!menu || menu.classList.contains('hidden')) return;
+        const trigger = event.target.closest('button');
+        if (event.target.closest('#quickToolsMenu')) return;
+        if (trigger && trigger.getAttribute('onclick') === 'toggleQuickTools()') return;
+        menu.classList.add('hidden');
+    });
 }
