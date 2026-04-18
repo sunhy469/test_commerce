@@ -3,7 +3,7 @@
 import json
 import re
 import uuid
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from app.models.schemas import ChatRequest
 from app.services.local_ai import LocalAI
 from app.agents.product_monitor import ProductMonitorAgent
@@ -368,9 +368,12 @@ async def get_chat_history(session_id: str = "", limit: int = 50):
 @chat_router.delete("/history/{session_id}")
 async def delete_chat_history(session_id: str):
     """删除指定会话历史"""
+    normalized = (session_id or "").strip()
+    if len(normalized) < 4 or len(normalized) > 64:
+        raise HTTPException(status_code=400, detail="invalid session_id")
     with get_conn() as conn:
-        conn.execute("DELETE FROM chat_history WHERE session_id=?", (session_id,))
-    return {"ok": True, "session_id": session_id}
+        conn.execute("DELETE FROM chat_history WHERE session_id=?", (normalized,))
+    return {"ok": True, "session_id": normalized}
 
 
 def _save_chat(session_id: str, role: str, content: str, action_type: str = None, action_result: str = None):

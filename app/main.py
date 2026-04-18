@@ -53,6 +53,7 @@ async def schedule_echotik_product_sync():
 async def lifespan(_app: FastAPI):
     """应用生命周期管理"""
     import asyncio
+    from contextlib import suppress
     # 启动定时任务
     task = asyncio.create_task(schedule_inventory_sync())
     # echotik_task = asyncio.create_task(schedule_echotik_product_sync())
@@ -61,6 +62,8 @@ async def lifespan(_app: FastAPI):
     yield
     # 关闭定时任务
     task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
     # if 'echotik_task' in locals():
     #     echotik_task.cancel()
 
