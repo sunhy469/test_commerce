@@ -61,27 +61,19 @@ function quickCommand(text) {
 function autoPolishPrompt(raw, scene, country) {
     const text = (raw || '').trim();
     if (!text) return '';
-    const market = country || '全部国家';
-    const sceneHints = {
-        auto: '请自动补齐缺失信息，并按完整电商流程执行：先找热销商品，再匹配供应链，再生成适合售卖的详情页和商品图。',
-        ranking: '请自动补齐必要筛选条件，优先返回最值得关注的热销榜结果，并说明推荐原因。',
-        supply: '请自动识别商品关键词与用途，优先匹配可售卖、可比价的 1688 供应链。',
-        detail: '请自动完善卖点、受众、风格和转化文案，生成适合电商售卖的详情页内容。',
-        image: '请自动补全画面风格、背景、构图与售卖氛围，生成适合电商转化的商品图要求。'
-    };
-    const qualityHints = '输出时优先关注商品标题、价格、销量、供应链匹配度和最终售卖素材。';
-    return `${text}。目标市场：${market}。${sceneHints[scene] || sceneHints.auto}${qualityHints}`;
+    if (!country) return text;
+    return `${text}（目标市场：${country}）`;
 }
 
 function fillChatTemplate() {
     const input = document.getElementById('chatInput');
     const country = document.getElementById('chatCountry')?.value || '目标国家';
     const templates = {
-        auto: `帮我找${country}热销的___，自动匹配1688同款，并生成详情页和商品图`,
-        ranking: `帮我查看${country}月榜销量前10，并区分品类`,
-        supply: `在1688上帮我找到___的同款供应链，并按利润从高到低排序`,
-        detail: `请帮我生成这个产品的详情页，页面干净整洁，目标国家是${country}`,
-        image: `请帮我生成这个产品的商品图，风格干净整洁，目标国家是${country}`
+        auto: `请用简单方式解释：___`,
+        ranking: `帮我总结一下${country}市场最近的品类趋势`,
+        supply: `我想做一个新品，请给我 3 个选品方向`,
+        detail: `帮我把这段产品描述优化成更容易理解的文案`,
+        image: `给我一个商品主图提示词，风格干净简洁`
     };
     input.value = templates[chatScene] || templates.auto;
     input.focus();
@@ -99,14 +91,13 @@ function prepareChat() {
     const country = document.getElementById('chatCountry')?.value;
     const polished = autoPolishPrompt(msg, chatScene, country);
     pendingChatMessage = polished;
-    document.getElementById('confirmText').textContent = `将按「${sceneLabel(chatScene)}」模式执行，并自动补全提示词：${pendingChatMessage}`;
+    document.getElementById('confirmText').textContent = `将发送这条消息：${pendingChatMessage}`;
     const summary = document.getElementById('chatCommandSummary');
-    if (summary) summary.textContent = `待执行：${sceneLabel(chatScene)} / ${country || '全部国家'} / 已自动补全提示词`;
+    if (summary) summary.textContent = `待发送：普通对话`;
     const countryBadge = document.getElementById('chatCountryBadge');
     if (countryBadge) countryBadge.textContent = country || 'ALL';
     const marketLabel = document.getElementById('chatMarketLabel');
     if (marketLabel) marketLabel.textContent = country || '全部国家';
-    pushTaskQueue({ title: msg, status: 'queued', country: country || '全部国家' });
     document.getElementById('confirmPanel').classList.remove('hidden');
 }
 
