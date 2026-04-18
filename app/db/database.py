@@ -5,6 +5,7 @@ import os
 from contextlib import contextmanager
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "trade_agents.db")
+SEA_REGION_CODES = ("ID", "MY", "PH", "SG", "TH", "VN")
 
 
 def _drop_column_if_exists(conn: sqlite3.Connection, table_name: str, column_name: str):
@@ -279,6 +280,55 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
+
+        for region in SEA_REGION_CODES:
+            table_name = f"products_{region.lower()}"
+            conn.execute(
+                f"""CREATE TABLE IF NOT EXISTS {table_name} (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    product_id TEXT UNIQUE,
+                    product_name TEXT,
+                    image_url TEXT,
+                    region TEXT,
+                    total_sale_1d_cnt INTEGER DEFAULT 0,
+                    total_sale_7d_cnt INTEGER DEFAULT 0,
+                    total_sale_15d_cnt INTEGER DEFAULT 0,
+                    total_sale_30d_cnt INTEGER DEFAULT 0,
+                    total_sale_gmv_1d_amt REAL DEFAULT 0,
+                    total_sale_gmv_7d_amt REAL DEFAULT 0,
+                    total_sale_gmv_15d_amt REAL DEFAULT 0,
+                    total_sale_gmv_30d_amt REAL DEFAULT 0,
+                    total_live_sale_1d_cnt INTEGER DEFAULT 0,
+                    total_live_sale_7d_cnt INTEGER DEFAULT 0,
+                    total_live_sale_15d_cnt INTEGER DEFAULT 0,
+                    total_live_sale_30d_cnt INTEGER DEFAULT 0,
+                    total_live_sale_gmv_1d_amt REAL DEFAULT 0,
+                    total_live_sale_gmv_7d_amt REAL DEFAULT 0,
+                    total_live_sale_gmv_15d_amt REAL DEFAULT 0,
+                    total_live_sale_gmv_30d_amt REAL DEFAULT 0,
+                    total_video_sale_1d_cnt INTEGER DEFAULT 0,
+                    total_video_sale_7d_cnt INTEGER DEFAULT 0,
+                    total_video_sale_15d_cnt INTEGER DEFAULT 0,
+                    total_video_sale_30d_cnt INTEGER DEFAULT 0,
+                    total_video_sale_gmv_1d_amt REAL DEFAULT 0,
+                    total_video_sale_gmv_7d_amt REAL DEFAULT 0,
+                    total_video_sale_gmv_15d_amt REAL DEFAULT 0,
+                    total_video_sale_gmv_30d_amt REAL DEFAULT 0,
+                    total_views_1d_cnt INTEGER DEFAULT 0,
+                    total_views_7d_cnt INTEGER DEFAULT 0,
+                    total_views_15d_cnt INTEGER DEFAULT 0,
+                    total_views_30d_cnt INTEGER DEFAULT 0,
+                    total_live_1d_cnt INTEGER DEFAULT 0,
+                    total_live_7d_cnt INTEGER DEFAULT 0,
+                    total_live_15d_cnt INTEGER DEFAULT 0,
+                    total_live_30d_cnt INTEGER DEFAULT 0,
+                    total_video_1d_cnt INTEGER DEFAULT 0,
+                    total_video_7d_cnt INTEGER DEFAULT 0,
+                    total_video_15d_cnt INTEGER DEFAULT 0,
+                    total_video_30d_cnt INTEGER DEFAULT 0,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )"""
+            )
 
         _drop_column_if_exists(conn, "products", "video_views")
         _drop_column_if_exists(conn, "content_records", "video_json")

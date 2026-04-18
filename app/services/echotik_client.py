@@ -11,6 +11,46 @@ from app.models.schemas import TikTokProduct
 from config.settings import get_settings
 
 class EchoTikClient:
+    SEA_REGION_CODES = ("ID", "MY", "PH", "SG", "TH", "VN")
+    REGION_STORAGE_FIELDS = (
+        "total_sale_1d_cnt",
+        "total_sale_7d_cnt",
+        "total_sale_15d_cnt",
+        "total_sale_30d_cnt",
+        "total_sale_gmv_1d_amt",
+        "total_sale_gmv_7d_amt",
+        "total_sale_gmv_15d_amt",
+        "total_sale_gmv_30d_amt",
+        "total_live_sale_1d_cnt",
+        "total_live_sale_7d_cnt",
+        "total_live_sale_15d_cnt",
+        "total_live_sale_30d_cnt",
+        "total_live_sale_gmv_1d_amt",
+        "total_live_sale_gmv_7d_amt",
+        "total_live_sale_gmv_15d_amt",
+        "total_live_sale_gmv_30d_amt",
+        "total_video_sale_1d_cnt",
+        "total_video_sale_7d_cnt",
+        "total_video_sale_15d_cnt",
+        "total_video_sale_30d_cnt",
+        "total_video_sale_gmv_1d_amt",
+        "total_video_sale_gmv_7d_amt",
+        "total_video_sale_gmv_15d_amt",
+        "total_video_sale_gmv_30d_amt",
+        "total_views_1d_cnt",
+        "total_views_7d_cnt",
+        "total_views_15d_cnt",
+        "total_views_30d_cnt",
+        "total_live_1d_cnt",
+        "total_live_7d_cnt",
+        "total_live_15d_cnt",
+        "total_live_30d_cnt",
+        "total_video_1d_cnt",
+        "total_video_7d_cnt",
+        "total_video_15d_cnt",
+        "total_video_30d_cnt",
+    )
+
     def __init__(self):
         settings = get_settings()
 
@@ -77,6 +117,19 @@ class EchoTikClient:
         except Exception:
             return ""
         return ""
+
+    def _build_storage_product(self, row: dict, region: str) -> dict:
+        image_url = self._parse_sale_props_image(row.get("sale_props")) or self._parse_cover_url(row.get("cover_url"))
+        product = {
+            "product_id": str(row.get("product_id") or ""),
+            "product_name": row.get("product_name") or "",
+            "image_url": image_url,
+            "region": row.get("region") or region,
+        }
+        for field in self.REGION_STORAGE_FIELDS:
+            val = row.get(field, 0)
+            product[field] = self._to_float(val, 0) if field.endswith("_amt") else self._to_int(val, 0)
+        return product
 
     def _parse_sale_props_image(self, sale_props_raw) -> str:
         """从 sale_props 字段中提取第一张图片链接。"""
@@ -384,3 +437,25 @@ class EchoTikClient:
             if p.product_id == product_id:
                 return p
         return None
+
+    async def fetch_region_products_for_storage(self, region: str, page_num: int = 1, page_size: int = 50) -> list[dict]:
+        """拉取指定国家商品并提取数据库存储所需字段。"""
+        target_region = (region or "US").upper()
+        if self.use_mock:
+            return []
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(
+                f"{self.base_url}/echotik/product/list",
+                headers=self._get_headers(),
+                params={
+                    "region": target_region,
+                    "page_num": max(page_num, 1),
+                    "page_size": min(max(page_size, 1), 100),
+                },
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            if payload.get("code") != 0:
+                return []
+            rows = payload.get("data") or []
+            return [self._build_storage_product(row, target_region) for row in rows if row.get("product_id")]
