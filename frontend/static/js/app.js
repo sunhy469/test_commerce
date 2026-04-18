@@ -38,11 +38,6 @@ async function loadDashboard() {
         document.getElementById('statContents').textContent = stats.content_records || 0;
 
         const trend = build7DayTrend(acts.activities || []);
-        drawOverviewTrendChart('chartOverview', trend.dates, { 操作数: trend.values });
-        drawTrendChart('chartProducts', trend.dates, trend.values.map(v => Math.max(v, stats.products || 0)));
-        drawTrendChart('chartAnalyses', trend.dates, trend.values.map((v, i) => v + (i % 3) + (stats.analyses || 0)));
-        drawTrendChart('chartSuppliers', trend.dates, trend.values.map((v, i) => Math.max(0, v - (i % 2)) + (stats.supplier_matches || 0)));
-        drawTrendChart('chartContents', trend.dates, trend.values.map((v, i) => v + (i % 4) + (stats.content_records || 0)));
 
         const storeList = stores.stores || [];
         const countries = new Set(storeList.map(s => s.country).filter(Boolean));
@@ -69,114 +64,6 @@ function build7DayTrend(activities) {
         if (counts.has(key)) counts.set(key, (counts.get(key) || 0) + 1);
     }
     return { dates: days, values: [...counts.values()] };
-}
-
-function drawTrendChart(canvasId, labels, values) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    if (typeof Chart === 'undefined') return;
-    if (dashboardMiniCharts[canvasId]) {
-        dashboardMiniCharts[canvasId].destroy();
-        dashboardMiniCharts[canvasId] = null;
-    }
-    const colorMap = {
-        chartProducts: '#b84520',
-        chartAnalyses: '#2f5d50',
-        chartSuppliers: '#b7791f',
-        chartContents: '#7c3aed',
-    };
-    const labelMap = {
-        chartProducts: '监控商品总数',
-        chartAnalyses: '选品分析数',
-        chartSuppliers: '供应链匹配',
-        chartContents: '内容生成',
-    };
-    const color = colorMap[canvasId] || '#b84520';
-    dashboardMiniCharts[canvasId] = new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                label: labelMap[canvasId] || '趋势',
-                data: values.map(v => Number(v) || 0),
-                borderColor: color,
-                backgroundColor: color + '26',
-                pointRadius: 2,
-                pointHoverRadius: 3,
-                borderWidth: 2,
-                tension: 0.25,
-                fill: true,
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: { mode: 'index', intersect: false },
-            },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { maxTicksLimit: 4, color: '#74685c', font: { size: 10 } },
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(126,96,60,.12)' },
-                    ticks: { maxTicksLimit: 4, color: '#74685c', font: { size: 10 } },
-                },
-            },
-        },
-    });
-}
-
-function drawOverviewTrendChart(canvasId, labels, seriesMap) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    const seriesEntries = Object.entries(seriesMap || {}).filter(([, vals]) => Array.isArray(vals) && vals.length);
-    if (!seriesEntries.length) return;
-    if (typeof Chart === 'undefined') return;
-    if (dashboardOverviewChart) {
-        dashboardOverviewChart.destroy();
-        dashboardOverviewChart = null;
-    }
-    const colors = ['#b84520', '#2f5d50', '#6b7280', '#7c3aed'];
-    const datasets = seriesEntries.map(([name, vals], idx) => ({
-        label: name,
-        data: vals.map(v => Number(v) || 0),
-        borderColor: colors[idx % colors.length],
-        backgroundColor: colors[idx % colors.length] + '33',
-        pointRadius: 3,
-        pointHoverRadius: 4,
-        borderWidth: 2,
-        tension: 0.25,
-        fill: false,
-    }));
-    dashboardOverviewChart = new Chart(canvas, {
-        type: 'line',
-        data: { labels, datasets },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
-                tooltip: { mode: 'index', intersect: false },
-            },
-            interaction: { mode: 'nearest', axis: 'x', intersect: false },
-            scales: {
-                x: {
-                    title: { display: true, text: '日期' },
-                    grid: { color: 'rgba(126,96,60,.12)' },
-                },
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: '数据' },
-                    grid: { color: 'rgba(126,96,60,.12)' },
-                },
-            },
-        },
-    });
 }
 
 function setChatScene(scene) {
