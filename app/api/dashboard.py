@@ -48,7 +48,7 @@ async def get_stats():
     # 检测系统连接状态
     settings = get_settings()
     claude_status = "disabled"
-    echotik_status = "connected" if settings.echotik_api_key else "not_configured"
+    echotik_status = "connected" if (settings.echotik_api_key or (settings.echotik_username and settings.echotik_password)) else "not_configured"
     seed_status = "connected" if settings.volcano_api_key else "not_configured"
 
     return {
