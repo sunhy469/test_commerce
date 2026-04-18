@@ -69,13 +69,14 @@ async def lifespan(_app: FastAPI):
     import asyncio
     # 启动定时任务
     task = asyncio.create_task(schedule_inventory_sync())
-    echotik_task = asyncio.create_task(schedule_echotik_product_sync())
+    # echotik_task = asyncio.create_task(schedule_echotik_product_sync())
     print("[系统] 库存同步定时任务已启动（每6小时执行）")
-    print("[系统] EchoTik 商品同步任务已启动（每6小时执行，东南亚分国家入库）")
+    print("[系统] EchoTik 商品同步任务已注释，当前不自动请求最新数据")
     yield
     # 关闭定时任务
     task.cancel()
-    echotik_task.cancel()
+    # if 'echotik_task' in locals():
+    #     echotik_task.cancel()
 
 
 app = FastAPI(
