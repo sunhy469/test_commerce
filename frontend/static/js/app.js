@@ -694,7 +694,34 @@ function renderLocalHistoryChips() {
         el.innerHTML = '<span class="text-[var(--muted)]">暂无历史会话</span>';
         return;
     }
-    el.innerHTML = localChatSessions.slice(0, 8).map(s => `<button onclick="switchChatSession('${s.id}')" class="chat-history-item px-3 py-1.5 rounded-full border bg-white/70 ${s.id===activeSessionId ? 'active' : ''}">${escapeHtml(s.title)}</button>`).join('');
+    el.innerHTML = localChatSessions.slice(0, 8).map(s => `
+        <div class="chat-history-item inline-flex items-center rounded-full border bg-white/70 ${s.id===activeSessionId ? 'active' : ''}"> 
+            <button onclick="switchChatSession('${s.id}')" class="px-3 py-1.5 text-xs">${escapeHtml(s.title)}</button>
+            <button onclick="deleteChatSession('${s.id}', event)" class="px-2 py-1.5 text-xs text-[var(--muted)] hover:text-[var(--accent-strong)]" title="删除会话">×</button>
+        </div>
+    `).join('');
+}
+
+function deleteChatSession(id, event) {
+    if (event) event.stopPropagation();
+    const idx = localChatSessions.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    const wasActive = activeSessionId === id;
+    localChatSessions.splice(idx, 1);
+
+    if (!localChatSessions.length) {
+        saveLocalChats();
+        startNewChat();
+        return;
+    }
+
+    if (wasActive) {
+        activeSessionId = localChatSessions[0].id;
+        restoreLocalSession(activeSessionId);
+    }
+
+    saveLocalChats();
+    renderLocalHistoryChips();
 }
 
 function switchChatSession(id) {
