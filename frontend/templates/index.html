@@ -67,12 +67,12 @@
             <div class="text-xs text-[var(--muted)] mt-1">跨境电商 AI 工作台</div>
         </div>
         <div class="px-3 py-4 space-y-1">
-            <button onclick="go('chat')" class="nav-item active w-full text-left px-3 py-2 text-sm" data-page="chat"><i class="iconfont icon-xiaoxi mr-2"></i>聊天</button>
-            <button onclick="go('dashboard')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="dashboard"><i class="iconfont icon-zonglan mr-2"></i>总览</button>
-            <button onclick="go('ranking')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="ranking"><i class="iconfont icon-paihang mr-2"></i>热销排行榜</button>
-            <button onclick="go('supply')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="supply"><i class="iconfont icon-gongyinglian mr-2"></i>供应链</button>
-            <button onclick="go('content')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="content"><i class="iconfont icon-neirong mr-2"></i>内容生成</button>
-            <button onclick="go('purchase')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="purchase"><i class="iconfont icon-caigou mr-2"></i>采购管理</button>
+            <button onclick="go('chat')" class="nav-item active w-full text-left px-3 py-2 text-sm font-bold" data-page="chat"><i class="iconfont icon-xiaoxi mr-2"></i>聊天</button>
+            <button onclick="go('dashboard')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="dashboard"><i class="iconfont icon-zonglan mr-2"></i>总览</button>
+            <button onclick="go('ranking')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="ranking"><i class="iconfont icon-paihang mr-2"></i>热销排行榜</button>
+            <button onclick="go('supply')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="supply"><i class="iconfont icon-gongyinglian mr-2"></i>供应链</button>
+            <button onclick="go('content')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="content"><i class="iconfont icon-neirong mr-2"></i>内容生成</button>
+            <button onclick="go('purchase')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="purchase"><i class="iconfont icon-caigou mr-2"></i>采购管理</button>
         </div>
     </aside>
     <main class="main-area">
@@ -81,7 +81,7 @@
                 <div><button onclick="startNewChat()" class="px-3 py-2 rounded-full soft-card text-sm">+ 新聊天</button></div>
                 <div class="flex items-center gap-3">
                     <span class="hidden md:inline text-xs text-[var(--muted)]" id="statusText">系统就绪</span>
-                    <button onclick="openModal('userModal')" class="px-3 py-2 rounded-full glass text-sm">用户中心 / 绑定店铺</button>
+                    <button onclick="openModal('userModal')" class="px-3 py-2 rounded-full glass text-sm">用户中心</button>
                 </div>
             </div>
         </header>
@@ -115,7 +115,7 @@
 <!-- ==================== 2. AI对话 ==================== -->
 <div id="page-chat" class="page active">
     <div class="w-full p-4 md:p-10">
-        <section class="glass rounded-[32px] p-6 md:p-8 h-[calc(100vh-150px)] max-h-[calc(100vh-150px)] flex flex-col overflow-hidden">
+        <section class="glass rounded-[32px] p-6 md:p-8 h-[calc(100vh-170px)] max-h-[calc(100vh-170px)] flex flex-col overflow-hidden">
             <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
                 <div class="text-center text-[var(--muted)] py-24">
                     <p class="serif-title text-5xl text-[var(--text)] mb-5">准备好了，随时开始</p>
@@ -123,8 +123,8 @@
                 </div>
             </div>
 
-            <div class="chat-composer mt-5 rounded-[28px] border bg-white/90 p-4 shadow-sm">
-                <textarea id="chatInput" rows="3" class="w-full resize-none bg-transparent outline-none text-base leading-7" placeholder="有问题，尽管问"></textarea>
+            <div class="chat-composer mt-5 rounded-[28px] border bg-white/90 p-3 shadow-sm">
+                <textarea id="chatInput" rows="2" class="w-full resize-none bg-transparent outline-none text-base leading-6" placeholder="有问题，尽管问"></textarea>
                 <div class="flex items-center justify-between gap-3 mt-3">
                     <div class="relative">
                         <button onclick="toggleQuickTools()" class="action-btn text-base px-4">＋</button>
