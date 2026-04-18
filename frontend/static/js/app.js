@@ -91,27 +91,12 @@ function prepareChat() {
     const country = document.getElementById('chatCountry')?.value;
     const polished = autoPolishPrompt(msg, chatScene, country);
     pendingChatMessage = polished;
-    document.getElementById('confirmText').textContent = `将发送这条消息：${pendingChatMessage}`;
     const summary = document.getElementById('chatCommandSummary');
     if (summary) summary.textContent = `待发送：普通对话`;
-    const countryBadge = document.getElementById('chatCountryBadge');
-    if (countryBadge) countryBadge.textContent = country || 'ALL';
-    const marketLabel = document.getElementById('chatMarketLabel');
-    if (marketLabel) marketLabel.textContent = country || '全部国家';
-    document.getElementById('confirmPanel').classList.remove('hidden');
-}
-
-function confirmSend() {
-    if (!pendingChatMessage) return;
-    document.getElementById('confirmPanel').classList.add('hidden');
     sendChat(pendingChatMessage);
     pendingChatMessage = '';
 }
 
-function cancelConfirm() {
-    pendingChatMessage = '';
-    document.getElementById('confirmPanel').classList.add('hidden');
-}
 
 function sceneLabel(scene) {
     return ({ auto:'自动模式', ranking:'热销榜', supply:'1688找货', detail:'详情页', image:'图像生成' })[scene] || '自动模式';
@@ -335,18 +320,6 @@ async function loadChatHistory() {
         const modeLabel = document.getElementById('chatModeLabel');
         if (modeLabel) modeLabel.textContent = sceneLabel(chatScene);
     } catch (e) {}
-}
-
-function startVoice() {
-    const btn = document.getElementById('voiceBtn');
-    if (voice) { voice.stop(); voice = null; btn.classList.remove('recording'); return; }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert('浏览器不支持语音，请用Chrome'); return; }
-    voice = new SR(); voice.lang = 'zh-CN'; voice.continuous = false; voice.interimResults = false;
-    btn.classList.add('recording');
-    voice.onresult = e => { document.getElementById('chatInput').value = e.results[0][0].transcript; btn.classList.remove('recording'); voice = null; };
-    voice.onerror = voice.onend = () => { btn.classList.remove('recording'); voice = null; };
-    voice.start();
 }
 
 // === Ranking ===
@@ -760,22 +733,6 @@ function bindQuickAction(action) {
     if (menu) menu.classList.add('hidden');
     if (action === 'upload') {
         document.getElementById('chatImage')?.click();
-        return;
-    }
-    if (action === 'voice') {
-        startVoice();
-        return;
-    }
-    if (action === 'template') {
-        fillChatTemplate();
-        return;
-    }
-    if (action === 'scene_auto') {
-        setChatScene('auto');
-        return;
-    }
-    if (action === 'scene_ranking') {
-        setChatScene('ranking');
     }
 }
 

@@ -66,8 +66,8 @@
             <div class="text-xs text-[var(--muted)] mt-1">跨境电商 AI 工作台</div>
         </div>
         <div class="px-3 py-4 space-y-1">
-            <button onclick="go('chat')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="chat"><i class="iconfont icon-xiaoxi mr-2"></i>新建聊天</button>
-            <button onclick="go('dashboard')" class="nav-item active w-full text-left px-3 py-2 text-sm" data-page="dashboard"><i class="iconfont icon-zonglan mr-2"></i>总览</button>
+            <button onclick="go('chat')" class="nav-item active w-full text-left px-3 py-2 text-sm" data-page="chat"><i class="iconfont icon-xiaoxi mr-2"></i>聊天</button>
+            <button onclick="go('dashboard')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="dashboard"><i class="iconfont icon-zonglan mr-2"></i>总览</button>
             <button onclick="go('ranking')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="ranking"><i class="iconfont icon-paihang mr-2"></i>热销排行榜</button>
             <button onclick="go('supply')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="supply"><i class="iconfont icon-gongyinglian mr-2"></i>供应链</button>
             <button onclick="go('content')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="content"><i class="iconfont icon-neirong mr-2"></i>内容生成</button>
@@ -77,17 +77,16 @@
     <main class="main-area">
         <header class="sticky top-0 z-40 border-b bg-[rgba(250,245,237,.85)] backdrop-blur-xl">
             <div class="px-4 py-3 flex items-center justify-between gap-4">
-                <div class="text-sm text-[var(--muted)]">Chat-style 工作流：左侧导航 + 中部对话执行</div>
+                <div><button onclick="startNewChat()" class="px-3 py-2 rounded-full soft-card text-sm">+ 新聊天</button></div>
                 <div class="flex items-center gap-3">
                     <span class="hidden md:inline text-xs text-[var(--muted)]" id="statusText">系统就绪</span>
-                    <button onclick="startNewChat()" class="px-3 py-2 rounded-full soft-card text-sm">+ 新聊天</button>
                     <button onclick="openModal('userModal')" class="px-3 py-2 rounded-full glass text-sm">用户中心 / 绑定店铺</button>
                 </div>
             </div>
         </header>
 
 <!-- ==================== 1. 总览仪表盘 ==================== -->
-<div id="page-dashboard" class="page active">
+<div id="page-dashboard" class="page">
     <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
         <section class="glass rounded-[28px] p-6">
             <div class="text-xs text-[var(--accent-strong)] mb-3">一个对话框调度热销榜、1688找货、详情页、商品图</div>
@@ -113,7 +112,7 @@
 </div>
 
 <!-- ==================== 2. AI对话 ==================== -->
-<div id="page-chat" class="page">
+<div id="page-chat" class="page active">
     <div class="max-w-5xl mx-auto p-4 md:p-10">
         <section class="glass rounded-[32px] p-6 md:p-8 min-h-[80vh] flex flex-col">
             <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-1">
@@ -129,24 +128,12 @@
                     <div class="relative">
                         <button onclick="toggleQuickTools()" class="action-btn text-base px-4">＋</button>
                         <div id="quickToolsMenu" class="hidden absolute bottom-12 left-0 w-64 rounded-2xl border bg-white shadow-xl p-2 space-y-1 z-40">
-                            <button onclick="bindQuickAction('upload')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">上传图片</button>
-                            <button onclick="bindQuickAction('voice')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">语音输入</button>
-                            <button onclick="bindQuickAction('template')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">补全提示词</button>
-                            <button onclick="bindQuickAction('scene_auto')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">切换自动模式</button>
-                            <button onclick="bindQuickAction('scene_ranking')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">切换热销榜模式</button>
+                            <button onclick="bindQuickAction('upload')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">上传本地文件（支持图片）</button>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="startVoice()" id="voiceBtn" class="voice-btn action-btn">语音</button>
                         <button onclick="prepareChat()" class="px-5 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">发送</button>
                     </div>
-                </div>
-            </div>
-
-            <div id="confirmPanel" class="hidden mt-3 rounded-[20px] border bg-[rgba(184,69,32,.08)] p-4">
-                <div class="flex items-start justify-between gap-3">
-                    <div><div class="font-semibold text-[var(--accent-strong)]">执行确认</div><div id="confirmText" class="text-sm text-[var(--muted)] mt-1"></div></div>
-                    <div class="flex gap-2"><button onclick="confirmSend()" class="px-4 py-2 rounded-full text-sm text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">确认</button><button onclick="cancelConfirm()" class="px-4 py-2 rounded-full bg-white text-sm border">取消</button></div>
                 </div>
             </div>
 
