@@ -183,9 +183,9 @@ class EchoTikClient:
             price = round((min_price + max_price) / 2, 2) if min_price and max_price else (min_price or max_price or 0)
 
         image_url = (
-            self._parse_sale_props_image(row.get("sale_props"))
-            or self._parse_cover_url(row.get("cover_url"))
-            or f"https://picsum.photos/seed/{quote(str(row.get('product_id') or title))}/400/400"
+                self._parse_sale_props_image(row.get("sale_props"))
+                or self._parse_cover_url(row.get("cover_url"))
+                or f"https://picsum.photos/seed/{quote(str(row.get('product_id') or title))}/400/400"
         )
         weekly_sales = self._to_int(row.get("total_sale_7d_cnt"), 0)
         daily_sales = self._to_int(row.get("total_sale_1d_cnt"), 0)
@@ -386,7 +386,7 @@ class EchoTikClient:
         return product
 
     async def search_trending_products(
-        self, keyword: str = "", category: str = "", country: str = "", days: int = 7, limit: int = 20
+            self, keyword: str = "", category: str = "", country: str = "", days: int = 7, limit: int = 20
     ) -> list[TikTokProduct]:
         """搜索 TikTok 热销商品（使用 /echotik/product/list）。"""
         del days
@@ -449,8 +449,11 @@ class EchoTikClient:
                 headers=self._get_headers(),
                 params={
                     "region": target_region,
-                    "page_num": max(page_num, 1),
-                    "page_size": min(max(page_size, 1), 100),
+                    "page_num": 5,
+                    "page_size": 5,
+                    "sales_trend_flag": 1,
+                    "sort_type": 1,
+                    "product_sort_field": 4,
                 },
             )
             resp.raise_for_status()

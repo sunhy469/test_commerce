@@ -160,7 +160,7 @@ def save_analysis(keyword: str, category: str, analysis: dict, product_count: in
     with get_conn() as conn:
         conn.execute(
             """INSERT INTO product_analyses (keyword, category, analysis_json, product_count, recommendation_score)
-            VALUES (?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?)""",
             (
                 keyword,
                 category,
@@ -191,8 +191,8 @@ def save_supplier_match(keyword: str, product_title: str, suppliers: list, analy
     with get_conn() as conn:
         conn.execute(
             """INSERT INTO supplier_matches
-            (keyword, product_title, suppliers_json, analysis_json, supplier_count, best_supplier, best_price)
-            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (keyword, product_title, suppliers_json, analysis_json, supplier_count, best_supplier, best_price)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 keyword,
                 product_title,
@@ -225,7 +225,7 @@ def save_content(product_title: str, product_price: float, content_type: str, pa
     with get_conn() as conn:
         conn.execute(
             """INSERT INTO content_records (product_title, product_price, content_type, page_json)
-            VALUES (?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?)""",
             (
                 product_title,
                 product_price,
