@@ -11,6 +11,10 @@ from app.api.scraper import scraper_router
 from app.api.chat import chat_router
 from app.api.skills import skills_router
 
+ENABLE_ECHOTIK_SYNC = os.getenv("ENABLE_ECHOTIK_SYNC", "false").lower() in {"1", "true", "yes", "on"}
+ECHOTIK_SYNC_PAGE_NUM = int(os.getenv("ECHOTIK_SYNC_PAGE_NUM", "5"))
+ECHOTIK_SYNC_PAGE_SIZE = int(os.getenv("ECHOTIK_SYNC_PAGE_SIZE", "5"))
+
 
 # 定时任务：每6小时同步库存
 async def schedule_inventory_sync():
@@ -37,25 +41,11 @@ async def schedule_echotik_product_sync():
     while True:
         try:
             for region in EchoTikClient.SEA_REGION_CODES:
-                products = await client.fetch_region_products_for_storage(region=region, page_num=1, page_size=100)
-                saved_count = save_products_by_region(region, products)
-                print(f"[定时任务] EchoTik 同步完成: region={region}, saved={saved_count}")
-        except Exception as e:
-            print(f"[定时任务] EchoTik 同步失败: {e}")
-        await asyncio.sleep(6 * 3600)
-
-
-async def schedule_echotik_product_sync():
-    """每6小时抓取东南亚各国家商品数据并落库。"""
-    import asyncio
-    from app.db.store import save_products_by_region
-    from app.services.echotik_client import EchoTikClient
-
-    client = EchoTikClient()
-    while True:
-        try:
-            for region in EchoTikClient.SEA_REGION_CODES:
-                products = await client.fetch_region_products_for_storage(region=region, page_num=5, page_size=5)
+                products = await client.fetch_region_products_for_storage(
+                    region=region,
+                    page_num=ECHOTIK_SYNC_PAGE_NUM,
+                    page_size=ECHOTIK_SYNC_PAGE_SIZE,
+                )
                 saved_count = save_products_by_region(region, products)
                 print(f"[定时任务] EchoTik 同步完成: region={region}, saved={saved_count}")
         except Exception as e:
@@ -67,15 +57,26 @@ async def schedule_echotik_product_sync():
 async def lifespan(_app: FastAPI):
     """应用生命周期管理"""
     import asyncio
+    from contextlib import suppress
+    tasks = []
     # 启动定时任务
-    task = asyncio.create_task(schedule_inventory_sync())
-    echotik_task = asyncio.create_task(schedule_echotik_product_sync())
+    tasks.append(asyncio.create_task(schedule_inventory_sync()))
+    # echotik_task = asyncio.create_task(schedule_echotik_product_sync())
     print("[系统] 库存同步定时任务已启动（每6小时执行）")
-    print("[系统] EchoTik 商品同步任务已启动（每6小时执行，东南亚分国家入库）")
+    if ENABLE_ECHOTIK_SYNC:
+        tasks.append(asyncio.create_task(schedule_echotik_product_sync()))
+        print(
+            f"[系统] EchoTik 商品同步任务已启动（每6小时执行，page_num={ECHOTIK_SYNC_PAGE_NUM}, page_size={ECHOTIK_SYNC_PAGE_SIZE}）"
+        )
+    else:
+        print("[系统] EchoTik 商品同步任务已禁用（设置 ENABLE_ECHOTIK_SYNC=true 可开启）")
     yield
     # 关闭定时任务
-    task.cancel()
-    echotik_task.cancel()
+    for task in tasks:
+        task.cancel()
+    for task in tasks:
+        with suppress(asyncio.CancelledError):
+            await task
 
 
 app = FastAPI(

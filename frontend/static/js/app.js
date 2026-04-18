@@ -37,10 +37,6 @@ async function loadDashboard() {
         document.getElementById('statContents').textContent = stats.content_records || 0;
 
         const trend = build7DayTrend(acts.activities || []);
-        drawTrendChart('chartProducts', trend.dates, trend.values.map(v => Math.max(v, stats.products || 0)));
-        drawTrendChart('chartAnalyses', trend.dates, trend.values.map((v, i) => v + (i % 3) + (stats.analyses || 0)));
-        drawTrendChart('chartSuppliers', trend.dates, trend.values.map((v, i) => Math.max(0, v - (i % 2)) + (stats.supplier_matches || 0)));
-        drawTrendChart('chartContents', trend.dates, trend.values.map((v, i) => v + (i % 4) + (stats.content_records || 0)));
 
         const storeList = stores.stores || [];
         const countries = new Set(storeList.map(s => s.country).filter(Boolean));
@@ -67,41 +63,6 @@ function build7DayTrend(activities) {
         if (counts.has(key)) counts.set(key, (counts.get(key) || 0) + 1);
     }
     return { dates: days, values: [...counts.values()] };
-}
-
-function drawTrendChart(canvasId, labels, values) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width = canvas.clientWidth;
-    const h = canvas.height = canvas.clientHeight;
-    ctx.clearRect(0, 0, w, h);
-
-    const max = Math.max(...values, 1);
-    const stepX = w / (values.length + 1);
-
-    ctx.strokeStyle = 'rgba(126,96,60,.2)';
-    ctx.beginPath();
-    ctx.moveTo(18, h - 22);
-    ctx.lineTo(w - 8, h - 22);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#b84520';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    values.forEach((v, i) => {
-        const x = stepX * (i + 1);
-        const y = h - 22 - ((h - 45) * (v / max));
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    ctx.fillStyle = '#74685c';
-    ctx.font = '10px sans-serif';
-    labels.forEach((lb, i) => {
-        const x = stepX * (i + 1) - 10;
-        ctx.fillText(lb, x, h - 8);
-    });
 }
 
 function setChatScene(scene) {
@@ -184,6 +145,11 @@ async function sendChat(overrideMsg = '') {
         });
         const d = await res.json();
         chatSession = d.session_id || chatSession;
+        const active = localChatSessions.find(s => s.id === activeSessionId);
+        if (active) {
+            active.backend_session_id = chatSession;
+            saveLocalChats();
+        }
         document.getElementById('thinking')?.remove();
         addMsg('ai', d.reply || '完成');
         persistChatMessage('assistant', d.reply || '完成');
@@ -370,17 +336,10 @@ function renderAutoProductCard(p, i) {
 let chatLoaded = false;
 async function loadChatHistory() {
     renderLocalHistoryChips();
-    if (chatLoaded) return; chatLoaded = true;
-    try {
-        const res = await fetch(API + '/api/chat/history?limit=20');
-        const d = await res.json();
-        if (d.messages && d.messages.length) {
-            chatSession = d.messages[0].session_id || '';
-            d.messages.slice().reverse().forEach(m => addMsg(m.role === 'user' ? 'user' : 'ai', m.content));
-        }
-        const modeLabel = document.getElementById('chatModeLabel');
-        if (modeLabel) modeLabel.textContent = sceneLabel(chatScene);
-    } catch (e) {}
+    if (chatLoaded) return;
+    chatLoaded = true;
+    const modeLabel = document.getElementById('chatModeLabel');
+    if (modeLabel) modeLabel.textContent = sceneLabel(chatScene);
 }
 
 // === Ranking ===
@@ -688,8 +647,11 @@ async function confirmUnbind() {
 
 function setStatus(msg) {
     const el = document.getElementById('statusText');
+    if (!el) return;
     el.textContent = msg;
-    setTimeout(() => el.textContent = '系统就绪', 2500);
+    setTimeout(() => {
+        if (el) el.textContent = '系统就绪';
+    }, 2500);
 }
 
 
@@ -710,7 +672,7 @@ function initLocalChats() {
 
 function startNewChat() {
     const id = `chat_${Date.now()}`;
-    const item = { id, title: '新聊天', created_at: new Date().toISOString(), messages: [] };
+    const item = { id, title: '新聊天', created_at: new Date().toISOString(), messages: [], backend_session_id: '' };
     localChatSessions.unshift(item);
     localChatSessions = localChatSessions.slice(0, 20);
     activeSessionId = id;
@@ -738,6 +700,7 @@ function persistChatMessage(role, content) {
 function restoreLocalSession(sessionId) {
     const session = localChatSessions.find(s => s.id === sessionId);
     if (!session) return;
+    chatSession = session.backend_session_id || '';
     const box = document.getElementById('chatMessages');
     if (!box) return;
     box.innerHTML = '';
@@ -763,10 +726,16 @@ function renderLocalHistoryChips() {
     `).join('');
 }
 
-function deleteChatSession(id, event) {
+async function deleteChatSession(id, event) {
     if (event) event.stopPropagation();
     const idx = localChatSessions.findIndex(s => s.id === id);
     if (idx === -1) return;
+    const deleting = localChatSessions[idx];
+    if (deleting?.backend_session_id) {
+        try {
+            await fetch(API + `/api/chat/history/${encodeURIComponent(deleting.backend_session_id)}`, { method: 'DELETE' });
+        } catch (e) {}
+    }
     const wasActive = activeSessionId === id;
     localChatSessions.splice(idx, 1);
 
