@@ -66,7 +66,67 @@ async def get_ranking(req: RankingRequest):
     sea_countries = {"ID", "TH", "VN", "MY", "PH", "SG"}
     country = req.country.strip().upper() if req.country else ""
 
+    def _fetch_from_region_table(conn, region: str):
+        table_name = f"products_{region.lower()}"
+        if req.time_range == "weekly":
+            order_field = "total_sale_7d_cnt"
+        elif req.time_range == "monthly":
+            order_field = "total_sale_30d_cnt"
+        else:
+            order_field = "total_sale_1d_cnt"
+
+        if req.rank_type == "growth":
+            # 分表暂无增长率字段，临时使用 7天-1天销量差值近似排序
+            order_expr = "(total_sale_7d_cnt - total_sale_1d_cnt) DESC"
+        else:
+            order_expr = f"{order_field} DESC"
+
+        query = f"SELECT * FROM {table_name} WHERE 1=1"
+        params = []
+        if req.category:
+            query += " AND product_name LIKE ?"
+            params.append(f"%{req.category}%")
+        query += f" ORDER BY {order_expr} LIMIT ?"
+        params.append(req.limit)
+
+        rows = conn.execute(query, params).fetchall()
+        products = []
+        for row in rows:
+            item = dict(row)
+            products.append(
+                {
+                    "product_id": item.get("product_id", ""),
+                    "title": item.get("product_name", ""),
+                    "price": round(float(item.get("total_sale_gmv_1d_amt", 0) or 0) / max(int(item.get("total_sale_1d_cnt", 0) or 0), 1), 2),
+                    "currency": "USD",
+                    "sales_count": int(item.get("total_sale_30d_cnt", 0) or 0),
+                    "daily_sales": int(item.get("total_sale_1d_cnt", 0) or 0),
+                    "weekly_sales": int(item.get("total_sale_7d_cnt", 0) or 0),
+                    "growth_rate": int(item.get("total_sale_7d_cnt", 0) or 0) - int(item.get("total_sale_1d_cnt", 0) or 0),
+                    "category": req.category or "销量榜",
+                    "image_url": item.get("image_url", ""),
+                    "country": region,
+                }
+            )
+        return products
+
     with get_conn() as conn:
+        if country and country in sea_countries:
+            table_exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                (f"products_{country.lower()}",),
+            ).fetchone()
+            if table_exists:
+                region_products = _fetch_from_region_table(conn, country)
+                if region_products:
+                    return {
+                        "products": region_products,
+                        "total": len(region_products),
+                        "rank_type": req.rank_type,
+                        "time_range": req.time_range,
+                        "country": country,
+                    }
+
         query = "SELECT * FROM products WHERE 1=1"
         params = []
 
