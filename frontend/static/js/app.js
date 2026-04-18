@@ -37,6 +37,16 @@ async function loadDashboard() {
         document.getElementById('statContents').textContent = stats.content_records || 0;
 
         const trend = build7DayTrend(acts.activities || []);
+        drawOverviewTrendChart(
+            'chartOverview',
+            trend.dates,
+            {
+                商品: trend.values.map(v => Math.max(v, stats.products || 0)),
+                分析: trend.values.map((v, i) => v + (i % 3) + (stats.analyses || 0)),
+                供应链: trend.values.map((v, i) => Math.max(0, v - (i % 2)) + (stats.supplier_matches || 0)),
+                内容: trend.values.map((v, i) => v + (i % 4) + (stats.content_records || 0)),
+            }
+        );
         drawTrendChart('chartProducts', trend.dates, trend.values.map(v => Math.max(v, stats.products || 0)));
         drawTrendChart('chartAnalyses', trend.dates, trend.values.map((v, i) => v + (i % 3) + (stats.analyses || 0)));
         drawTrendChart('chartSuppliers', trend.dates, trend.values.map((v, i) => Math.max(0, v - (i % 2)) + (stats.supplier_matches || 0)));
@@ -101,6 +111,76 @@ function drawTrendChart(canvasId, labels, values) {
     labels.forEach((lb, i) => {
         const x = stepX * (i + 1) - 10;
         ctx.fillText(lb, x, h - 8);
+    });
+}
+
+function drawOverviewTrendChart(canvasId, labels, seriesMap) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width = canvas.clientWidth;
+    const h = canvas.height = canvas.clientHeight;
+    if (!w || !h) return;
+    ctx.clearRect(0, 0, w, h);
+
+    const left = 46;
+    const right = 16;
+    const top = 14;
+    const bottom = 32;
+    const plotW = w - left - right;
+    const plotH = h - top - bottom;
+    const seriesEntries = Object.entries(seriesMap || {}).filter(([, vals]) => Array.isArray(vals) && vals.length);
+    if (!seriesEntries.length) return;
+
+    let max = 1;
+    seriesEntries.forEach(([, vals]) => vals.forEach(v => { max = Math.max(max, Number(v) || 0); }));
+    const ticks = 4;
+
+    ctx.strokeStyle = 'rgba(126,96,60,.14)';
+    ctx.fillStyle = '#74685c';
+    ctx.font = '11px sans-serif';
+    for (let i = 0; i <= ticks; i++) {
+        const y = top + (plotH / ticks) * i;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(w - right, y);
+        ctx.stroke();
+        const val = Math.round(max - (max / ticks) * i);
+        ctx.fillText(String(val), 8, y + 4);
+    }
+
+    const xStep = labels.length > 1 ? plotW / (labels.length - 1) : plotW;
+    ctx.strokeStyle = 'rgba(126,96,60,.24)';
+    ctx.beginPath();
+    ctx.moveTo(left, top + plotH);
+    ctx.lineTo(w - right, top + plotH);
+    ctx.stroke();
+    labels.forEach((lb, i) => {
+        const x = left + xStep * i;
+        ctx.fillText(lb, Math.max(left, x - 12), h - 10);
+    });
+
+    const colors = ['#b84520', '#2f5d50', '#6b7280', '#7c3aed'];
+    seriesEntries.forEach(([name, vals], idx) => {
+        const color = colors[idx % colors.length];
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        vals.forEach((v, i) => {
+            const x = left + xStep * i;
+            const y = top + plotH - (plotH * ((Number(v) || 0) / max));
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        vals.forEach((v, i) => {
+            const x = left + xStep * i;
+            const y = top + plotH - (plotH * ((Number(v) || 0) / max));
+            ctx.beginPath();
+            ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.fillText(name, w - right - 140 + idx * 34, top + 12);
     });
 }
 
