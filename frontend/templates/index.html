@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TradeAgent Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://at.alicdn.com/t/c/font_4753249_4dtkt0rz9j6.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -40,38 +42,52 @@
         #page-chat .chat-single-grid { display:block !important; }
         #page-chat #chatMessages { min-height:420px !important; max-height:none !important; }
         #page-chat .chat-input-wrap { position:sticky; bottom:0; padding-top:8px; background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.92) 28%,rgba(255,255,255,.98) 100%); }
+        
+        .app-shell { display:grid; grid-template-columns:260px 1fr; min-height:100vh; }
+        .sidebar { position:sticky; top:0; height:100vh; border-right:1px solid var(--line); border-radius:0; }
+        .main-area { min-width:0; }
+        .nav-item { display:flex; align-items:center; border-radius:12px; color:var(--text); }
+        #page-chat .chat-single-shell { max-width:1100px; margin:0 auto; }
+        #page-chat #chatMessages { min-height:52vh !important; }
+        .chat-history-item.active { background:rgba(184,69,32,.08); color:var(--accent-strong); }
+
+        #quickToolsMenu button { transition: all .2s ease; }
+        #page-chat .bubble-user, #page-chat .bubble-ai { font-size:14px; }
+        .chat-composer { position: sticky; bottom: 0; z-index: 5; }
+        @media (max-width: 1024px) { .app-shell { grid-template-columns:1fr; } .sidebar { position:relative; height:auto; border-right:0; border-bottom:1px solid var(--line);} }
         ::-webkit-scrollbar { width:6px; }
         ::-webkit-scrollbar-thumb { background:rgba(126,96,60,.22); border-radius:999px; }
     </style>
 </head>
 <body>
-
-<!-- 顶部导航 -->
-<nav class="sticky top-0 z-50 border-b bg-[rgba(250,245,237,.85)] backdrop-blur-xl">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-6">
-            <div>
-                <div class="serif-title text-xl font-black text-[var(--accent-strong)]">TradeAgent Studio</div>
-                <div class="text-xs text-[var(--muted)]">多智能体跨境电商工作台</div>
-            </div>
-            <div class="hidden xl:flex gap-2 flex-wrap">
-                <button onclick="go('dashboard')" class="nav-item active px-3 py-2 text-sm" data-page="dashboard">总览</button>
-                <button onclick="go('chat')" class="nav-item px-3 py-2 text-sm" data-page="chat">全自动选品执行</button>
-                <button onclick="go('ranking')" class="nav-item px-3 py-2 text-sm" data-page="ranking">排行榜</button>
-                <button onclick="go('supply')" class="nav-item px-3 py-2 text-sm" data-page="supply">供应链</button>
-                <button onclick="go('content')" class="nav-item px-3 py-2 text-sm" data-page="content">内容生成</button>
-                <button onclick="go('purchase')" class="nav-item px-3 py-2 text-sm" data-page="purchase">采购管理</button>
-            </div>
+<div class="app-shell">
+    <aside class="sidebar glass">
+        <div class="px-4 py-5 border-b border-[rgba(126,96,60,.12)]">
+            <div class="serif-title text-xl font-black text-[var(--accent-strong)]">TradeAgent Studio</div>
+            <div class="text-xs text-[var(--muted)] mt-1">跨境电商 AI 工作台</div>
         </div>
-        <div class="flex items-center gap-3">
-            <span class="hidden md:inline text-xs text-[var(--muted)]" id="statusText">系统就绪</span>
-            <button onclick="openModal('userModal')" class="px-3 py-2 rounded-full glass text-sm">用户中心 / 绑定店铺</button>
+        <div class="px-3 py-4 space-y-1">
+            <button onclick="go('chat')" class="nav-item active w-full text-left px-3 py-2 text-sm" data-page="chat"><i class="iconfont icon-xiaoxi mr-2"></i>聊天</button>
+            <button onclick="go('dashboard')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="dashboard"><i class="iconfont icon-zonglan mr-2"></i>总览</button>
+            <button onclick="go('ranking')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="ranking"><i class="iconfont icon-paihang mr-2"></i>热销排行榜</button>
+            <button onclick="go('supply')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="supply"><i class="iconfont icon-gongyinglian mr-2"></i>供应链</button>
+            <button onclick="go('content')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="content"><i class="iconfont icon-neirong mr-2"></i>内容生成</button>
+            <button onclick="go('purchase')" class="nav-item w-full text-left px-3 py-2 text-sm" data-page="purchase"><i class="iconfont icon-caigou mr-2"></i>采购管理</button>
         </div>
-    </div>
-</nav>
+    </aside>
+    <main class="main-area">
+        <header class="sticky top-0 z-40 border-b bg-[rgba(250,245,237,.85)] backdrop-blur-xl">
+            <div class="px-4 py-3 flex items-center justify-between gap-4">
+                <div><button onclick="startNewChat()" class="px-3 py-2 rounded-full soft-card text-sm">+ 新聊天</button></div>
+                <div class="flex items-center gap-3">
+                    <span class="hidden md:inline text-xs text-[var(--muted)]" id="statusText">系统就绪</span>
+                    <button onclick="openModal('userModal')" class="px-3 py-2 rounded-full glass text-sm">用户中心 / 绑定店铺</button>
+                </div>
+            </div>
+        </header>
 
 <!-- ==================== 1. 总览仪表盘 ==================== -->
-<div id="page-dashboard" class="page active">
+<div id="page-dashboard" class="page">
     <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
         <section class="glass rounded-[28px] p-6">
             <div class="text-xs text-[var(--accent-strong)] mb-3">一个对话框调度热销榜、1688找货、详情页、商品图</div>
@@ -97,143 +113,41 @@
 </div>
 
 <!-- ==================== 2. AI对话 ==================== -->
-<div id="page-chat" class="page">
-    <div class="chat-single-shell p-4 md:p-8">
-        <section class="glass rounded-[32px] p-5 md:p-6 min-h-[82vh] flex flex-col">
-            <div class="flex flex-wrap items-start justify-between gap-4 border-b pb-5 mb-5 chat-minimal-hide">
-                <div>
-                    <div class="serif-title text-3xl font-bold">多智能体对话框</div>
-                    <div class="text-sm text-[var(--muted)] mt-2">这里作为自动化执行主页面：输入需求后，系统自动串联热销榜、供应链、详情页、商品图、收藏与上架动作，适合电商售卖流程。</div>
-                </div>
-                <div class="grid sm:grid-cols-3 gap-3 min-w-[280px]">
-                    <div class="soft-card rounded-[22px] p-4"><div class="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Automation</div><div class="text-xl font-bold mt-2" id="chatAutoCount">0</div><div class="text-xs text-[var(--muted)] mt-1">自动结果数</div></div>
-                    <div class="soft-card rounded-[22px] p-4"><div class="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Workflow</div><div class="text-xl font-bold mt-2" id="chatStepCount">0</div><div class="text-xs text-[var(--muted)] mt-1">执行步骤数</div></div>
-                    <div class="soft-card rounded-[22px] p-4"><div class="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Country</div><div class="text-xl font-bold mt-2" id="chatCountryBadge">ALL</div><div class="text-xs text-[var(--muted)] mt-1">当前国家</div></div>
+<div id="page-chat" class="page active">
+    <div class="max-w-5xl mx-auto p-4 md:p-10">
+        <section class="glass rounded-[32px] p-6 md:p-8 h-[calc(100vh-150px)] max-h-[calc(100vh-150px)] flex flex-col overflow-hidden">
+            <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
+                <div class="text-center text-[var(--muted)] py-24">
+                    <p class="serif-title text-5xl text-[var(--text)] mb-5">准备好了，随时开始</p>
+                    <p class="text-sm">有问题，尽管问。</p>
                 </div>
             </div>
 
-            <div class="chat-single-grid grid xl:grid-cols-[1.02fr_.98fr] gap-5">
-                <section class="space-y-4">
-                    <div class="soft-card rounded-[28px] p-5 space-y-4 chat-input-panel">
-                        <div class="grid lg:grid-cols-[1.1fr_.9fr] gap-4">
-                            <div class="rounded-[24px] border bg-[linear-gradient(135deg,rgba(16,24,40,.96),rgba(40,53,80,.92))] text-white p-5">
-                                <div class="text-[11px] uppercase tracking-[0.22em] text-white/60">Automation Console</div>
-                                <div class="text-2xl font-bold mt-3 leading-tight">像 SaaS 中台一样，下达一条任务并自动编排选品、供货与售卖素材。</div>
-                                <div class="grid grid-cols-3 gap-3 mt-5 text-xs">
-                                    <div class="rounded-2xl bg-white/10 p-3"><div class="text-white/60">输入源</div><div class="font-semibold mt-1">图片 / 文字 / 语音</div></div>
-                                    <div class="rounded-2xl bg-white/10 p-3"><div class="text-white/60">执行模式</div><div class="font-semibold mt-1">自动编排</div></div>
-                                    <div class="rounded-2xl bg-white/10 p-3"><div class="text-white/60">交付物</div><div class="font-semibold mt-1">详情页 / 商品图</div></div>
-                                </div>
-                            </div>
-                            <div class="rounded-[24px] border bg-white/75 p-5">
-                                <div class="text-sm font-semibold">自动化任务输入</div>
-                                <div class="text-xs text-[var(--muted)] mt-1">适合“一句话跑完整条业务链路”，生成可直接用于电商售卖的素材与候选商品。</div>
-                                <div class="grid grid-cols-2 gap-3 mt-4 text-sm">
-                                    <div class="rounded-2xl bg-[rgba(184,69,32,.08)] p-3"><div class="text-[11px] text-[var(--muted)]">当前模式</div><div class="font-semibold mt-1" id="chatModeLabel">自动模式</div></div>
-                                    <div class="rounded-2xl bg-[rgba(47,93,80,.08)] p-3"><div class="text-[11px] text-[var(--muted)]">目标市场</div><div class="font-semibold mt-1" id="chatMarketLabel">全部国家</div></div>
-                                    <div class="rounded-2xl bg-[rgba(15,23,42,.04)] p-3"><div class="text-[11px] text-[var(--muted)]">执行输出</div><div class="font-semibold mt-1">榜单 / 供应链 / 图片</div></div>
-                                    <div class="rounded-2xl bg-[rgba(15,23,42,.04)] p-3"><div class="text-[11px] text-[var(--muted)]">素材用途</div><div class="font-semibold mt-1">电商售卖</div></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid xl:grid-cols-[1.2fr_.8fr] gap-4">
-                            <div class="rounded-[24px] border bg-white/78 p-4">
-                                <div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-sm font-semibold">任务队列</div><div class="text-xs text-[var(--muted)] mt-1">当前排队与最近执行任务</div></div><span class="text-xs text-[var(--muted)]" id="chatQueueCount">0 条任务</span></div>
-                                <div id="chatTaskQueue" class="space-y-2 text-sm text-[var(--muted)]"><div class="rounded-2xl border bg-white p-3">暂无任务，输入后自动加入队列。</div></div>
-                            </div>
-                            <div class="rounded-[24px] border bg-white/78 p-4">
-                                <div class="text-sm font-semibold">模块状态灯</div>
-                                <div class="text-xs text-[var(--muted)] mt-1">展示自动化链路当前进度</div>
-                                <div id="chatModuleLights" class="grid grid-cols-2 gap-3 mt-4 text-sm">
-                                    <div class="rounded-2xl border bg-white p-3"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span><span>热销榜</span></div><div class="text-xs text-[var(--muted)] mt-2">待执行</div></div>
-                                    <div class="rounded-2xl border bg-white p-3"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span><span>供应链</span></div><div class="text-xs text-[var(--muted)] mt-2">待执行</div></div>
-                                    <div class="rounded-2xl border bg-white p-3"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span><span>详情页</span></div><div class="text-xs text-[var(--muted)] mt-2">待执行</div></div>
-                                    <div class="rounded-2xl border bg-white p-3"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span><span>商品图</span></div><div class="text-xs text-[var(--muted)] mt-2">待执行</div></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-3 justify-between">
-                            <div>
-                                <div class="text-sm font-semibold">自动化任务输入</div>
-                                <div class="text-xs text-[var(--muted)] mt-1">支持图片、国家、自然语言指令，适合“一句话跑完整条业务链路”。</div>
-                            </div>
-                            <select id="chatCountry" class="rounded-2xl border px-4 py-3 text-sm bg-white/80 min-w-[160px]">
-                                <option value="">🌍 全部国家</option><option value="US">🇺🇸 美国</option><option value="GB">🇬🇧 英国</option><option value="ID">🇮🇩 印尼</option><option value="TH">🇹🇭 泰国</option><option value="JP">🇯🇵 日本</option><option value="KR">🇰🇷 韩国</option><option value="VN">🇻🇳 越南</option>
-                            </select>
-                        </div>
-                        <div class="flex flex-wrap gap-2" id="chatSceneChips">
-                            <span class="chip on" onclick="setChatScene('auto')" data-scene="auto">自动模式</span>
-                            <span class="chip" onclick="setChatScene('ranking')" data-scene="ranking">热销榜</span>
-                            <span class="chip" onclick="setChatScene('supply')" data-scene="supply">1688找货</span>
-                            <span class="chip" onclick="setChatScene('detail')" data-scene="detail">详情页</span>
-                            <span class="chip" onclick="setChatScene('image')" data-scene="image">图像生成</span>
-                        </div>
-                        <textarea id="chatInput" rows="4" class="w-full resize-none bg-white/75 border rounded-[24px] outline-none text-sm leading-7 px-4 py-4" placeholder="输入需求：帮我找美国热销的手机壳，输出图片、产品标题、价格、日销量、近7天销量，并自动匹配1688同款，再生成适合电商售卖的详情页和商品图。"></textarea>
-                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4 chat-input-wrap">
-                            <div class="flex flex-wrap gap-2 items-center">
-                                <button onclick="document.getElementById('chatImage').click()" class="action-btn">上传图片</button>
-                                <input id="chatImage" type="file" accept="image/*" class="hidden" onchange="handleChatImage(this)">
-                                <button onclick="startVoice()" id="voiceBtn" class="voice-btn action-btn">语音输入</button>
-                                <button onclick="fillChatTemplate()" class="action-btn">补全提示词</button>
-                                <span id="chatAttachmentLabel" class="text-xs text-[var(--muted)]"></span>
-                            </div>
-                            <button onclick="prepareChat()" class="px-5 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">开始执行自动化</button>
-                        </div>
-                        <div id="confirmPanel" class="hidden rounded-[24px] border bg-[rgba(184,69,32,.08)] p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div><div class="font-semibold text-[var(--accent-strong)]">执行确认</div><div id="confirmText" class="text-sm text-[var(--muted)] mt-1"></div></div>
-                                <div class="flex gap-2"><button onclick="confirmSend()" class="px-4 py-2 rounded-full text-sm text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">确认执行</button><button onclick="cancelConfirm()" class="px-4 py-2 rounded-full bg-white text-sm border">取消</button></div>
-                            </div>
+            <div class="chat-composer mt-5 rounded-[28px] border bg-white/90 p-4 shadow-sm">
+                <textarea id="chatInput" rows="3" class="w-full resize-none bg-transparent outline-none text-base leading-7" placeholder="有问题，尽管问"></textarea>
+                <div class="flex items-center justify-between gap-3 mt-3">
+                    <div class="relative">
+                        <button onclick="toggleQuickTools()" class="action-btn text-base px-4">＋</button>
+                        <div id="quickToolsMenu" class="hidden absolute bottom-12 left-0 w-64 rounded-2xl border bg-white shadow-xl p-2 space-y-1 z-40">
+                            <button onclick="bindQuickAction('upload')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">上传本地文件（支持图片）</button>
                         </div>
                     </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="prepareChat()" class="px-5 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">发送</button>
+                    </div>
+                </div>
+            </div>
 
-                    <div class="soft-card rounded-[28px] p-5 flex-1 flex flex-col">
-                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                            <div>
-                                <div class="text-lg font-bold">全自动选品执行台</div>
-                                <div class="text-xs text-[var(--muted)] mt-1">上面看消息，下面直接输入。系统会自动补全提示词并发起全流程执行。</div>
-                            </div>
-                            <div id="chatCommandSummary" class="text-xs text-[var(--muted)]">等待指令</div>
-                        </div>
-                        <div id="chatMessages" class="overflow-y-auto space-y-4 pr-1 flex-1">
-                            <div class="text-center text-[var(--muted)] py-16">
-                                <p class="serif-title text-3xl text-[var(--text)] mb-3">自动化执行台已就绪</p>
-                                <p class="text-sm">直接输入一句话需求，系统会自动完善提示词、补齐国家语境，并串联热销榜、找货、详情页和商品图。</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+            <input id="chatImage" type="file" accept="image/*" class="hidden" onchange="handleChatImage(this)">
+            <div id="chatAttachmentLabel" class="text-xs text-[var(--muted)] mt-2"></div>
+            <div id="chatHistoryList" class="mt-3 flex flex-wrap gap-2 text-xs"></div>
 
-                <aside class="space-y-4 chat-minimal-hide">
-                    <div class="soft-card rounded-[28px] p-5">
-                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">自动化流程看板</div><div class="text-xs text-[var(--muted)] mt-1">问答页单独承接整条自动化链路。</div></div><span class="px-3 py-1 rounded-full bg-[rgba(47,93,80,.08)] text-[var(--forest)] text-xs font-semibold">Auto</span></div>
-                        <div id="chatWorkflowBoard" class="space-y-3 text-sm">
-                            <div class="rounded-2xl border bg-white/70 p-4 text-[var(--muted)]">等待执行后展示：热销榜抓取、供应链匹配、详情页与商品图生成、收藏与上架动作。</div>
-                        </div>
-                    </div>
-                    <div class="soft-card rounded-[28px] p-5">
-                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">当前选中商品</div><div class="text-xs text-[var(--muted)] mt-1">用于后续生成详情页、商品图与上架动作。</div></div><span class="text-xs text-[var(--muted)]" id="chatSelectedLabel">未选择</span></div>
-                        <div id="chatSelectedProduct" class="rounded-2xl border bg-white/70 p-4 text-sm text-[var(--muted)]">执行后自动选中当前商品。</div>
-                    </div>
-                    <div class="soft-card rounded-[28px] p-5">
-                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">素材状态</div><div class="text-xs text-[var(--muted)] mt-1">详情页、商品图、标签生成状态。</div></div><span class="text-xs text-[var(--muted)]">Assets</span></div>
-                        <div id="chatAssetStatus" class="grid grid-cols-3 gap-3 text-sm">
-                            <div class="rounded-2xl border bg-white/70 p-3"><div class="text-[11px] text-[var(--muted)]">详情页</div><div class="font-semibold mt-2">待生成</div></div>
-                            <div class="rounded-2xl border bg-white/70 p-3"><div class="text-[11px] text-[var(--muted)]">商品图</div><div class="font-semibold mt-2">待生成</div></div>
-                            <div class="rounded-2xl border bg-white/70 p-3"><div class="text-[11px] text-[var(--muted)]">标签</div><div class="font-semibold mt-2">待生成</div></div>
-                        </div>
-                    </div>
-                    <div class="soft-card rounded-[28px] p-5">
-                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">自动化结果池</div><div class="text-xs text-[var(--muted)] mt-1">展示图片、产品标题、价格、日销量、近7天销量及右侧操作按钮。</div></div><button onclick="loadRanking()" class="action-btn">同步榜单</button></div>
-                        <div id="chatAutoResults" class="space-y-3 text-sm text-[var(--muted)]">
-                            <div class="rounded-2xl border bg-white/70 p-4">执行后将在此生成自动化候选商品结果卡。</div>
-                        </div>
-                    </div>
-                    <div class="soft-card rounded-[28px] p-5">
-                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">下一步推荐动作</div><div class="text-xs text-[var(--muted)] mt-1">全自动流程完成后，用于推向新平台售卖。</div></div><span class="text-xs text-[var(--muted)]">Next</span></div>
-                        <div id="chatNextActions" class="space-y-2 text-sm text-[var(--muted)]"><div class="rounded-2xl border bg-white/70 p-4">等待执行后推荐：生成详情页、生成商品图、补充售卖 tag、上架店铺。</div></div>
-                    </div>
-                </aside>
+            <!-- 保留逻辑依赖元素（简化页面但不改后端流程） -->
+            <div class="hidden">
+                <select id="chatCountry"><option value="">全部国家</option><option value="US">美国</option><option value="GB">英国</option></select>
+                <div id="chatSceneChips"><span class="chip on" data-scene="auto"></span><span class="chip" data-scene="ranking"></span><span class="chip" data-scene="supply"></span><span class="chip" data-scene="detail"></span><span class="chip" data-scene="image"></span></div>
+                <div id="chatCommandSummary"></div><div id="chatCountryBadge"></div><div id="chatMarketLabel"></div><div id="chatModeLabel"></div>
+                <div id="chatTaskQueue"></div><div id="chatQueueCount"></div><div id="chatModuleLights"></div><div id="chatSelectedProduct"></div><div id="chatSelectedLabel"></div><div id="chatAssetStatus"></div><div id="chatNextActions"></div><div id="chatWorkflowBoard"></div><div id="chatStepCount"></div><div id="chatAutoResults"></div><div id="chatAutoCount"></div>
             </div>
         </section>
     </div>
@@ -381,6 +295,9 @@
             </div>
         </section>
     </div>
+</div>
+
+    </main>
 </div>
 
 <!-- ==================== 用户中心 Modal ==================== -->
