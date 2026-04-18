@@ -53,6 +53,7 @@
 
         #quickToolsMenu button { transition: all .2s ease; }
         #page-chat .bubble-user, #page-chat .bubble-ai { font-size:14px; }
+        .chat-composer { position: sticky; bottom: 0; z-index: 5; }
         @media (max-width: 1024px) { .app-shell { grid-template-columns:1fr; } .sidebar { position:relative; height:auto; border-right:0; border-bottom:1px solid var(--line);} }
         ::-webkit-scrollbar { width:6px; }
         ::-webkit-scrollbar-thumb { background:rgba(126,96,60,.22); border-radius:999px; }
@@ -114,15 +115,15 @@
 <!-- ==================== 2. AI对话 ==================== -->
 <div id="page-chat" class="page active">
     <div class="max-w-5xl mx-auto p-4 md:p-10">
-        <section class="glass rounded-[32px] p-6 md:p-8 min-h-[80vh] flex flex-col">
-            <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-1">
+        <section class="glass rounded-[32px] p-6 md:p-8 h-[calc(100vh-150px)] max-h-[calc(100vh-150px)] flex flex-col overflow-hidden">
+            <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
                 <div class="text-center text-[var(--muted)] py-24">
-                    <p class="serif-title text-5xl text-[var(--text)] mb-5">你好，准备开始新任务了吗？</p>
-                    <p class="text-sm">输入一句话即可自动联动热销榜、供应链与内容生成。</p>
+                    <p class="serif-title text-5xl text-[var(--text)] mb-5">准备好了，随时开始</p>
+                    <p class="text-sm">有问题，尽管问。</p>
                 </div>
             </div>
 
-            <div class="mt-5 rounded-[28px] border bg-white/90 p-4 shadow-sm">
+            <div class="chat-composer mt-5 rounded-[28px] border bg-white/90 p-4 shadow-sm">
                 <textarea id="chatInput" rows="3" class="w-full resize-none bg-transparent outline-none text-base leading-7" placeholder="有问题，尽管问"></textarea>
                 <div class="flex items-center justify-between gap-3 mt-3">
                     <div class="relative">

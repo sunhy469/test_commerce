@@ -655,7 +655,7 @@ function startNewChat() {
     activeSessionId = id;
     chatSession = '';
     const box = document.getElementById('chatMessages');
-    if (box) box.innerHTML = `<div class="text-center text-[var(--muted)] py-16"><p class="serif-title text-3xl text-[var(--text)] mb-3">你好，准备开始新任务了吗？</p><p class="text-sm">输入任务后将自动完成热销榜、供应链与内容生成链路。</p></div>`;
+    if (box) box.innerHTML = `<div class="text-center text-[var(--muted)] py-16"><p class="serif-title text-4xl text-[var(--text)] mb-3">准备好了，随时开始</p><p class="text-sm">有问题，尽管问。</p></div>`;
     document.getElementById('chatInput').value = '';
     saveLocalChats();
     renderLocalHistoryChips();
@@ -681,7 +681,7 @@ function restoreLocalSession(sessionId) {
     if (!box) return;
     box.innerHTML = '';
     if (!session.messages.length) {
-        box.innerHTML = `<div class="text-center text-[var(--muted)] py-16"><p class="serif-title text-3xl text-[var(--text)] mb-3">自动化执行台已就绪</p><p class="text-sm">直接输入一句话需求，系统会自动完善提示词并执行。</p></div>`;
+        box.innerHTML = `<div class="text-center text-[var(--muted)] py-16"><p class="serif-title text-4xl text-[var(--text)] mb-3">准备好了，随时开始</p><p class="text-sm">有问题，尽管问。</p></div>`;
         return;
     }
     session.messages.forEach(m => addMsg(m.role === 'user' ? 'user' : 'ai', m.content));
