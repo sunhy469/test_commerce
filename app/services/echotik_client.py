@@ -6,41 +6,9 @@ from urllib.parse import quote
 
 import httpx
 
+from app.db.store import get_products
 from app.models.schemas import TikTokProduct
 from config.settings import get_settings
-
-# Mock 数据 - 多国家、多品类、含图片和销量数据
-MOCK_PRODUCTS = [
-    TikTokProduct(product_id="us_001", title="Sunset Glow Blush Palette - Summer Vibes Collection", price=12.99,
-        sales_count=15800, daily_sales=520, weekly_sales=3640, likes=189000, comments=4200,
-        shop_name="GlowBeautyOfficial", category="Beauty & Personal Care", country="US", growth_rate=23.5,
-        image_url="https://picsum.photos/seed/blush/400/400", product_url="https://www.tiktok.com/"),
-    TikTokProduct(product_id="us_002", title="Portable Mini Fan USB Rechargeable Neck Fan", price=8.99,
-        sales_count=32000, daily_sales=1100, weekly_sales=7700, likes=410000, comments=8900,
-        shop_name="CoolTechStore", category="Electronics", country="US", growth_rate=45.2,
-        image_url="https://picsum.photos/seed/fan/400/400", product_url="https://www.tiktok.com/"),
-    TikTokProduct(product_id="us_003", title="Cloud Slide Sandals Thick Sole Anti-slip", price=15.99,
-        sales_count=28500, daily_sales=950, weekly_sales=6650, likes=356000, comments=7100,
-        shop_name="ComfyWalkShop", category="Shoes & Fashion", country="US", growth_rate=38.7,
-        image_url="https://picsum.photos/seed/slides/400/400", product_url="https://www.tiktok.com/"),
-    TikTokProduct(product_id="us_004", title="LED Sunset Projection Lamp Rainbow Night Light", price=11.49,
-        sales_count=19200, daily_sales=640, weekly_sales=4480, likes=298000, comments=5600,
-        shop_name="HomeVibesDecor", category="Home & Garden", country="US", growth_rate=18.3,
-        image_url="https://picsum.photos/seed/lamp/400/400", product_url="https://www.tiktok.com/"),
-    TikTokProduct(product_id="us_005", title="Matcha Whisk Set Bamboo Tea Ceremony Kit", price=19.99,
-        sales_count=8900, daily_sales=290, weekly_sales=2030, likes=120000, comments=3200,
-        shop_name="ZenTeaHouse", category="Food & Beverages", country="US", growth_rate=12.1,
-        image_url="https://picsum.photos/seed/matcha/400/400", product_url="https://www.tiktok.com/"),
-    TikTokProduct(product_id="id_002", title="Phone Case Casing HP Aesthetic Lucu", price=2.99,
-        sales_count=68000, daily_sales=2300, weekly_sales=16100, likes=380000, comments=9200,
-        shop_name="CaseMurah", category="Electronics", country="ID", growth_rate=78.5,
-        image_url="https://picsum.photos/seed/phonecase/400/400", product_url="https://www.tiktok.com/"),
-    TikTokProduct(product_id="th_001", title="เซรั่มบำรุงผิวหน้า Vitamin C Serum", price=5.99,
-        sales_count=38000, daily_sales=1280, weekly_sales=8960, likes=450000, comments=10200,
-        shop_name="ThaiBeautyBKK", category="Beauty & Personal Care", country="TH", growth_rate=55.8,
-        image_url="https://picsum.photos/seed/thaiserum/400/400", product_url="https://www.tiktok.com/"),
-]
-
 
 class EchoTikClient:
     def __init__(self):
@@ -67,16 +35,16 @@ class EchoTikClient:
             }
         return {"Content-Type": "application/json", "Accept": "application/json"}
 
-    def _mock_products(self, keyword: str = "", category: str = "", country: str = "", limit: int = 20) -> list[TikTokProduct]:
-        results = list(MOCK_PRODUCTS)
-        if keyword:
-            lower = keyword.lower()
-            results = [p for p in results if lower in p.title.lower() or lower in p.category.lower()]
-        if category:
-            results = [p for p in results if category.lower() in p.category.lower()]
-        if country:
-            results = [p for p in results if p.country == country]
-        return (results or MOCK_PRODUCTS)[:limit]
+    def _from_db_products(self, keyword: str = "", category: str = "", country: str = "", limit: int = 20) -> list[TikTokProduct]:
+        rows = get_products(keyword=keyword, category=category, limit=max(limit, 1))
+        products: list[TikTokProduct] = []
+        for row in rows:
+            if country and (row.get("country") or "") != country:
+                continue
+            products.append(TikTokProduct(**row))
+            if len(products) >= limit:
+                break
+        return products
 
     def _extract_value(self, data: dict, key: str, default=None):
         node = (data or {}).get(key, default)
@@ -120,36 +88,44 @@ class EchoTikClient:
         """从 sale_props 字段中提取第一张图片链接。"""
         if not sale_props_raw:
             return ""
+
+        def _first_http_url(value) -> str:
+            if isinstance(value, str):
+                value = value.strip()
+                return value if value.startswith("http") else ""
+            if isinstance(value, dict):
+                for key in ("url", "image", "image_url", "img", "cover"):
+                    found = _first_http_url(value.get(key))
+                    if found:
+                        return found
+                for key in ("sale_prop_values", "images", "img_list", "urls", "image_list"):
+                    found = _first_http_url(value.get(key))
+                    if found:
+                        return found
+                return ""
+            if isinstance(value, list):
+                for item in value:
+                    found = _first_http_url(item)
+                    if found:
+                        return found
+            return ""
+
         try:
             sale_props = sale_props_raw
             if isinstance(sale_props_raw, str):
-                sale_props = json.loads(sale_props_raw)
-            if isinstance(sale_props, dict):
-                sale_props = [sale_props]
-            if not isinstance(sale_props, list):
-                return ""
+                sale_props = sale_props_raw.strip()
+                # 接口偶尔会返回二次 JSON 编码的字符串，最多解码两次。
+                for _ in range(2):
+                    if not isinstance(sale_props, str):
+                        break
+                    try:
+                        sale_props = json.loads(sale_props)
+                    except Exception:
+                        break
 
-            for item in sale_props:
-                if not isinstance(item, dict):
-                    continue
-                for key in ("image", "img", "image_url", "cover", "url"):
-                    val = item.get(key)
-                    if isinstance(val, str) and val.startswith("http"):
-                        return val
-                for key in ("sale_prop_values", "images", "img_list", "urls", "image_list"):
-                    val = item.get(key)
-                    if isinstance(val, list):
-                        for v in val:
-                            if isinstance(v, str) and v.startswith("http"):
-                                return v
-                            if isinstance(v, dict):
-                                for nested_key in ("url", "image", "image_url"):
-                                    nested_val = v.get(nested_key)
-                                    if isinstance(nested_val, str) and nested_val.startswith("http"):
-                                        return nested_val
+            return _first_http_url(sale_props)
         except Exception:
             return ""
-        return ""
 
     def _build_product_from_product_list(self, row: dict, region: str) -> TikTokProduct:
         title = row.get("product_name") or row.get("desc_detail") or "TikTok Product"
@@ -161,7 +137,7 @@ class EchoTikClient:
 
         image_url = (
             self._parse_sale_props_image(row.get("sale_props"))
-            or row.get("cover_url")
+            or self._parse_cover_url(row.get("cover_url"))
             or f"https://picsum.photos/seed/{quote(str(row.get('product_id') or title))}/400/400"
         )
         weekly_sales = self._to_int(row.get("total_sale_7d_cnt"), 0)
@@ -370,7 +346,7 @@ class EchoTikClient:
         region = country or "US"
 
         if self.use_mock:
-            return self._mock_products(keyword=keyword, category=category, country=country, limit=limit)
+            return self._from_db_products(keyword=keyword, category=category, country=country, limit=limit)
 
         ranked_products: list[TikTokProduct] = []
         params = {
@@ -391,13 +367,13 @@ class EchoTikClient:
                 resp.raise_for_status()
                 payload = resp.json()
                 if payload.get("code") != 0:
-                    return self._mock_products(keyword=keyword, category=category, country=country, limit=limit)
+                    return self._from_db_products(keyword=keyword, category=category, country=country, limit=limit)
                 rows = payload.get("data") or []
                 for row in rows:
                     product = self._build_product_from_product_list(row, region=region)
                     ranked_products.append(product)
         except Exception:
-            return self._mock_products(keyword=keyword, category=category, country=country, limit=limit)
+            return self._from_db_products(keyword=keyword, category=category, country=country, limit=limit)
 
         if keyword:
             lower = keyword.lower()
@@ -405,10 +381,12 @@ class EchoTikClient:
         if category:
             ranked_products = [p for p in ranked_products if category.lower() in p.category.lower()] or ranked_products
 
-        return ranked_products[:limit] if ranked_products else self._mock_products(keyword=keyword, category=category, country=country, limit=limit)
+        return ranked_products[:limit] if ranked_products else self._from_db_products(keyword=keyword, category=category, country=country, limit=limit)
 
     async def get_product_detail(self, product_id: str) -> TikTokProduct | None:
-        for p in MOCK_PRODUCTS:
+        if not product_id:
+            return None
+        for p in self._from_db_products(limit=200):
             if p.product_id == product_id:
                 return p
         return None
