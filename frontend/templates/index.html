@@ -96,6 +96,10 @@
                 <h2 class="serif-title text-3xl font-black">店铺数据总览</h2>
                 <span class="text-xs text-[var(--muted)]">核心指标汇总</span>
             </div>
+            <div class="soft-card rounded-[22px] p-4 mb-4">
+                <div class="font-bold text-sm mb-2">近7天趋势折线图</div>
+                <canvas id="chartOverview" height="220" class="w-full h-[220px]"></canvas>
+            </div>
             <div id="dashStatsCharts" class="grid md:grid-cols-2 gap-4">
                 <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm">📦 监控商品总数 <span id="statProducts" class="ml-2 text-[var(--accent-strong)]">0</span></div></div>
                 <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm">🧪 选品分析次数 <span id="statAnalyses" class="ml-2 text-emerald-700">0</span></div></div>
@@ -319,6 +323,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

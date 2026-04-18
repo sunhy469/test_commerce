@@ -7,6 +7,7 @@ let chatScene = 'auto';
 let chatTaskItems = [];
 let localChatSessions = [];
 let activeSessionId = '';
+const dashboardMiniCharts = {};
 
 document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); });
 
