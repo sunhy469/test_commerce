@@ -398,7 +398,7 @@ class EchoTikClient:
         ranked_products: list[TikTokProduct] = []
         params = {
             "region": region,
-            "page_num": 5,
+            "page_num": 10,
             "page_size": 5,
             "sales_trend_flag": 1,
             "sort_type": 1,
@@ -449,7 +449,7 @@ class EchoTikClient:
                 headers=self._get_headers(),
                 params={
                     "region": target_region,
-                    "page_num": 5,
+                    "page_num": 10,
                     "page_size": 5,
                     "sales_trend_flag": 1,
                     "sort_type": 1,
