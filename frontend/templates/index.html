@@ -98,7 +98,7 @@
             </div>
             <div class="soft-card rounded-[22px] p-4 mb-4">
                 <div class="font-bold text-sm mb-2">近7天趋势折线图</div>
-                <canvas id="chartOverview" height="220"></canvas>
+                <canvas id="chartOverview" height="220" class="w-full h-[220px]"></canvas>
             </div>
             <div id="dashStatsCharts" class="grid md:grid-cols-2 gap-4">
                 <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm mb-2">📦 监控商品总数 <span id="statProducts" class="ml-2 text-[var(--accent-strong)]">0</span></div><canvas id="chartProducts" height="110"></canvas></div>
@@ -323,6 +323,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>
