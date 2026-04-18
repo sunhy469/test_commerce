@@ -5,8 +5,10 @@ let voice = null;
 let pendingChatMessage = '';
 let chatScene = 'auto';
 let chatTaskItems = [];
+let localChatSessions = [];
+let activeSessionId = '';
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); loadSkills(); initLocalChats(); });
 
 function go(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -130,6 +132,7 @@ async function sendChat(overrideMsg = '') {
     if (!msg) return;
     inp.value = '';
     addMsg('user', msg);
+    persistChatMessage('user', msg);
     addMsg('ai', '思考中...', 'thinking');
     try {
         const res = await fetch(API + '/api/chat', {
@@ -146,10 +149,12 @@ async function sendChat(overrideMsg = '') {
         chatSession = d.session_id || chatSession;
         document.getElementById('thinking')?.remove();
         addMsg('ai', d.reply || '完成');
+        persistChatMessage('assistant', d.reply || '完成');
         if (d.data) showChatData(d.data);
     } catch (e) {
         document.getElementById('thinking')?.remove();
         addMsg('ai', '请求失败: ' + e.message);
+        persistChatMessage('assistant', '请求失败: ' + e.message);
     }
 }
 
@@ -327,6 +332,7 @@ function renderAutoProductCard(p, i) {
 
 let chatLoaded = false;
 async function loadChatHistory() {
+    renderLocalHistoryChips();
     if (chatLoaded) return; chatLoaded = true;
     try {
         const res = await fetch(API + '/api/chat/history?limit=20');
@@ -659,4 +665,94 @@ function setStatus(msg) {
     const el = document.getElementById('statusText');
     el.textContent = msg;
     setTimeout(() => el.textContent = '系统就绪', 2500);
+}
+
+
+function initLocalChats() {
+    try {
+        localChatSessions = JSON.parse(localStorage.getItem('ta_chat_sessions') || '[]');
+    } catch (e) {
+        localChatSessions = [];
+    }
+    if (!localChatSessions.length) {
+        startNewChat();
+        return;
+    }
+    activeSessionId = localChatSessions[0].id;
+    renderLocalHistoryChips();
+    restoreLocalSession(activeSessionId);
+}
+
+function startNewChat() {
+    const id = `chat_${Date.now()}`;
+    const item = { id, title: '新聊天', created_at: new Date().toISOString(), messages: [] };
+    localChatSessions.unshift(item);
+    localChatSessions = localChatSessions.slice(0, 20);
+    activeSessionId = id;
+    chatSession = '';
+    const box = document.getElementById('chatMessages');
+    if (box) box.innerHTML = `<div class="text-center text-[var(--muted)] py-16"><p class="serif-title text-3xl text-[var(--text)] mb-3">你好，准备开始新任务了吗？</p><p class="text-sm">输入任务后将自动完成热销榜、供应链与内容生成链路。</p></div>`;
+    document.getElementById('chatInput').value = '';
+    saveLocalChats();
+    renderLocalHistoryChips();
+    go('chat');
+}
+
+function persistChatMessage(role, content) {
+    if (!activeSessionId) return;
+    const session = localChatSessions.find(s => s.id === activeSessionId);
+    if (!session) return;
+    session.messages.push({ role, content, ts: Date.now() });
+    if (session.title === '新聊天' && role === 'user') {
+        session.title = content.slice(0, 18) || '新聊天';
+    }
+    saveLocalChats();
+    renderLocalHistoryChips();
+}
+
+function restoreLocalSession(sessionId) {
+    const session = localChatSessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const box = document.getElementById('chatMessages');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!session.messages.length) {
+        box.innerHTML = `<div class="text-center text-[var(--muted)] py-16"><p class="serif-title text-3xl text-[var(--text)] mb-3">自动化执行台已就绪</p><p class="text-sm">直接输入一句话需求，系统会自动完善提示词并执行。</p></div>`;
+        return;
+    }
+    session.messages.forEach(m => addMsg(m.role === 'user' ? 'user' : 'ai', m.content));
+}
+
+function renderLocalHistoryChips() {
+    const el = document.getElementById('chatHistoryList');
+    if (!el) return;
+    if (!localChatSessions.length) {
+        el.innerHTML = '<span class="text-[var(--muted)]">暂无历史会话</span>';
+        return;
+    }
+    el.innerHTML = localChatSessions.slice(0, 8).map(s => `<button onclick="switchChatSession('${s.id}')" class="chat-history-item px-3 py-1.5 rounded-full border bg-white/70 ${s.id===activeSessionId ? 'active' : ''}">${escapeHtml(s.title)}</button>`).join('');
+}
+
+function switchChatSession(id) {
+    activeSessionId = id;
+    restoreLocalSession(id);
+    renderLocalHistoryChips();
+    go('chat');
+}
+
+function saveLocalChats() {
+    localStorage.setItem('ta_chat_sessions', JSON.stringify(localChatSessions));
+}
+
+async function loadSkills() {
+    const box = document.getElementById('skillsList');
+    if (!box) return;
+    try {
+        const res = await fetch(API + '/api/skills');
+        const d = await res.json();
+        const skills = d.skills || [];
+        box.innerHTML = skills.length ? skills.map(s => `<div class="rounded-xl border bg-white/70 p-2"><div class="font-semibold text-[12px]">${escapeHtml(s.name)}</div><div class="text-[11px] mt-1">${escapeHtml((s.scripts || []).join(', ') || 'script 待补充')}</div></div>`).join('') : '暂无技能';
+    } catch (e) {
+        box.innerHTML = '技能加载失败';
+    }
 }

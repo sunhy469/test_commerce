@@ -1,10 +1,47 @@
-"""本地规则引擎：替代 Claude 的文本分析与结构化输出"""
+"""OpenAI 兼容大模型客户端（优先）+ 本地回退规则（兜底）"""
 
 import json
+import httpx
+from config.settings import get_settings
 
 
 class LocalAI:
+    def __init__(self):
+        settings = get_settings()
+        self.base_url = (settings.openai_base_url or "").rstrip("/")
+        self.api_key = settings.openai_api_key or ""
+        self.model = settings.model or "deepseek-chat"
+
     async def analyze(self, system_prompt: str, user_prompt: str) -> str:
+        """优先走在线模型；失败时使用本地规则，确保系统可用。"""
+        if self.base_url and self.api_key:
+            try:
+                return await self._analyze_by_remote(system_prompt, user_prompt)
+            except Exception:
+                pass
+        return self._analyze_by_fallback(system_prompt, user_prompt)
+
+    async def _analyze_by_remote(self, system_prompt: str, user_prompt: str) -> str:
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.2,
+            "stream": False,
+        }
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        async with httpx.AsyncClient(timeout=45) as client:
+            res = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+            res.raise_for_status()
+            data = res.json()
+            return data["choices"][0]["message"]["content"]
+
+    def _analyze_by_fallback(self, system_prompt: str, user_prompt: str) -> str:
         text = user_prompt or ""
         lower = text.lower()
 
