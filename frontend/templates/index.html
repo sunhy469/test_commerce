@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeAgent Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg:#f6f1e7; --paper:rgba(255,255,255,.82); --line:rgba(126,96,60,.14); --text:#201913; --muted:#74685c; --accent:#b84520; --accent-strong:#922f11; --forest:#2f5d50; }
+        body { font-family:'Manrope',sans-serif; color:var(--text); background:radial-gradient(circle at top left, rgba(246,215,127,.35), transparent 25%), radial-gradient(circle at top right, rgba(184,69,32,.16), transparent 28%), linear-gradient(180deg,#fbf7f0 0%,#f4ecdf 56%,#efe3d2 100%); min-height:100vh; }
+        h1, h2, h3, .serif-title { font-family:'Noto Serif SC',serif; }
+        .page { display:none; }
+        .page.active { display:block; }
+        .glass { background:var(--paper); backdrop-filter:blur(14px); border:1px solid var(--line); box-shadow:0 16px 40px rgba(67,44,23,.08); }
+        .soft-card { background:rgba(255,255,255,.84); border:1px solid rgba(126,96,60,.12); box-shadow:0 12px 28px rgba(53,38,23,.08); }
+        .nav-item.active { color:var(--accent-strong); background:rgba(184,69,32,.08); border-radius:999px; }
+        .chip { cursor:pointer; padding:8px 14px; border-radius:9999px; font-size:13px; border:1px solid rgba(126,96,60,.14); background:rgba(255,255,255,.72); }
+        .chip.on { background:linear-gradient(135deg,var(--accent),var(--accent-strong)); color:white; border-color:transparent; }
+        .sub-tab.active { background:linear-gradient(135deg,#2d2520,#4b3327); color:white; }
+        .bubble-user { background:linear-gradient(135deg,var(--accent),#d36436); color:white; border-radius:20px 20px 6px 20px; }
+        .bubble-ai { background:rgba(255,255,255,.94); color:var(--text); border:1px solid rgba(126,96,60,.12); border-radius:20px 20px 20px 6px; }
+        .rank-row:hover { transform:translateY(-2px); box-shadow:0 16px 30px rgba(41,27,16,.1); }
+        .rank-badge { width:56px; height:72px; border-radius:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:800; background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(243,235,224,.95)); border:1px solid rgba(126,96,60,.12); }
+        .rank-badge.top1 { background:linear-gradient(180deg,#fdf1bd,#f5c95f); color:#7e4a00; }
+        .rank-badge.top2 { background:linear-gradient(180deg,#f2f2f2,#d9d9d9); color:#505050; }
+        .rank-badge.top3 { background:linear-gradient(180deg,#f6dbc4,#d89e68); color:#6e3c14; }
+        .action-btn { padding:8px 12px; font-size:12px; border-radius:999px; border:1px solid rgba(126,96,60,.12); background:white; }
+        .voice-btn.recording { animation:pulse 1s infinite; background:#d84821 !important; color:white; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+        .modal-bg { background:rgba(31,22,15,.38); backdrop-filter:blur(6px); }
+        #page-chat .chat-minimal-hide { display:none !important; }
+        #page-chat .chat-input-panel { display:block !important; margin-top:16px; padding:16px !important; border:1px solid rgba(126,96,60,.12); background:rgba(255,255,255,.88); }
+        #page-chat .chat-input-panel > :nth-child(1),
+        #page-chat .chat-input-panel > :nth-child(2) { display:none !important; }
+        #page-chat .chat-input-panel > :nth-child(3) { margin-bottom:12px; }
+        #page-chat .chat-single-shell { max-width:960px; margin:0 auto; }
+        #page-chat .chat-single-grid { display:block !important; }
+        #page-chat #chatMessages { min-height:420px !important; max-height:none !important; }
+        #page-chat .chat-input-wrap { position:sticky; bottom:0; padding-top:8px; background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.92) 28%,rgba(255,255,255,.98) 100%); }
+        ::-webkit-scrollbar { width:6px; }
+        ::-webkit-scrollbar-thumb { background:rgba(126,96,60,.22); border-radius:999px; }
+    </style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<nav class="sticky top-0 z-50 border-b bg-[rgba(250,245,237,.85)] backdrop-blur-xl">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-6">
+            <div>
+                <div class="serif-title text-xl font-black text-[var(--accent-strong)]">TradeAgent Studio</div>
+                <div class="text-xs text-[var(--muted)]">多智能体跨境电商工作台</div>
+            </div>
+            <div class="hidden xl:flex gap-2 flex-wrap">
+                <button onclick="go('dashboard')" class="nav-item active px-3 py-2 text-sm" data-page="dashboard">总览</button>
+                <button onclick="go('chat')" class="nav-item px-3 py-2 text-sm" data-page="chat">全自动选品执行</button>
+                <button onclick="go('ranking')" class="nav-item px-3 py-2 text-sm" data-page="ranking">排行榜</button>
+                <button onclick="go('supply')" class="nav-item px-3 py-2 text-sm" data-page="supply">供应链</button>
+                <button onclick="go('content')" class="nav-item px-3 py-2 text-sm" data-page="content">内容生成</button>
+                <button onclick="go('purchase')" class="nav-item px-3 py-2 text-sm" data-page="purchase">采购管理</button>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="hidden md:inline text-xs text-[var(--muted)]" id="statusText">系统就绪</span>
+            <button onclick="openModal('userModal')" class="px-3 py-2 rounded-full glass text-sm">用户中心 / 绑定店铺</button>
+        </div>
+    </div>
+</nav>
+
+<!-- ==================== 1. 总览仪表盘 ==================== -->
+<div id="page-dashboard" class="page active">
+    <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+        <section class="glass rounded-[28px] p-6">
+            <div class="text-xs text-[var(--accent-strong)] mb-3">一个对话框调度热销榜、1688找货、详情页、商品图</div>
+            <h1 class="serif-title text-3xl md:text-5xl font-black leading-tight mb-4">从找热销商品到去 1688 找货卖，一键完成</h1>
+            <p class="text-[var(--muted)] text-sm md:text-base leading-7 max-w-4xl">支持语音输入和文字输入。可以通过一句话自动调动各模块，也可以进入单独模块进行精细化操作。关键动作前加入确认交互，流程更完整。</p>
+            <div class="flex flex-wrap gap-3 mt-6">
+                <button onclick="go('chat')" class="px-5 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">进入全自动选品执行台</button>
+                <button onclick="go('ranking')" class="px-5 py-3 rounded-full soft-card text-sm font-semibold">查看各国热销榜</button>
+            </div>
+        </section>
+        <section class="grid md:grid-cols-4 gap-4" id="dashStats">
+            <div class="soft-card rounded-[24px] p-5"><div class="text-xs text-[var(--muted)]">监控商品总数</div><div class="text-3xl font-extrabold text-[var(--accent-strong)] mt-2">-</div></div>
+            <div class="soft-card rounded-[24px] p-5"><div class="text-xs text-[var(--muted)]">选品分析次数</div><div class="text-3xl font-extrabold text-emerald-700 mt-2">-</div></div>
+            <div class="soft-card rounded-[24px] p-5"><div class="text-xs text-[var(--muted)]">供应链匹配</div><div class="text-3xl font-extrabold text-amber-700 mt-2">-</div></div>
+            <div class="soft-card rounded-[24px] p-5"><div class="text-xs text-[var(--muted)]">内容生成记录</div><div class="text-3xl font-extrabold text-violet-700 mt-2">-</div></div>
+        </section>
+        <section class="grid lg:grid-cols-3 gap-4">
+            <div class="soft-card rounded-[24px] p-5"><h3 class="serif-title text-xl font-bold mb-4">最近操作</h3><div id="dashActivities" class="space-y-3 text-sm text-[var(--muted)]">加载中...</div></div>
+            <div class="soft-card rounded-[24px] p-5"><h3 class="serif-title text-xl font-bold mb-4">快捷指令</h3><div class="space-y-3"><button onclick="quickCommand('帮我找美国近7天热销的手机壳，并匹配1688同款供应商')" class="w-full text-left p-3 rounded-2xl border">热销手机壳 + 1688 同款</button><button onclick="quickCommand('请帮我生成这个产品的商品图，风格偏高级、主体突出，目标市场是英国')" class="w-full text-left p-3 rounded-2xl border">英国市场商品图</button><button onclick="quickCommand('帮我生成这张图片的产品详情图')" class="w-full text-left p-3 rounded-2xl border">一句话生成详情图</button></div></div>
+            <div class="soft-card rounded-[24px] p-5"><h3 class="serif-title text-xl font-bold mb-4">我的收藏</h3><div id="dashFavorites" class="space-y-3 text-sm text-[var(--muted)]">加载中...</div></div>
+        </section>
+    </div>
+</div>
+
+<!-- ==================== 2. AI对话 ==================== -->
+<div id="page-chat" class="page">
+    <div class="chat-single-shell p-4 md:p-8">
+        <section class="glass rounded-[32px] p-5 md:p-6 min-h-[82vh] flex flex-col">
+            <div class="flex flex-wrap items-start justify-between gap-4 border-b pb-5 mb-5 chat-minimal-hide">
+                <div>
+                    <div class="serif-title text-3xl font-bold">多智能体对话框</div>
+                    <div class="text-sm text-[var(--muted)] mt-2">这里作为自动化执行主页面：输入需求后，系统自动串联热销榜、供应链、详情页、商品图、收藏与上架动作，适合电商售卖流程。</div>
+                </div>
+                <div class="grid sm:grid-cols-3 gap-3 min-w-[280px]">
+                    <div class="soft-card rounded-[22px] p-4"><div class="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Automation</div><div class="text-xl font-bold mt-2" id="chatAutoCount">0</div><div class="text-xs text-[var(--muted)] mt-1">自动结果数</div></div>
+                    <div class="soft-card rounded-[22px] p-4"><div class="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Workflow</div><div class="text-xl font-bold mt-2" id="chatStepCount">0</div><div class="text-xs text-[var(--muted)] mt-1">执行步骤数</div></div>
+                    <div class="soft-card rounded-[22px] p-4"><div class="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Country</div><div class="text-xl font-bold mt-2" id="chatCountryBadge">ALL</div><div class="text-xs text-[var(--muted)] mt-1">当前国家</div></div>
+                </div>
+            </div>
+
+            <div class="chat-single-grid grid xl:grid-cols-[1.02fr_.98fr] gap-5">
+                <section class="space-y-4">
+                    <div class="soft-card rounded-[28px] p-5 space-y-4 chat-input-panel">
+                        <div class="grid lg:grid-cols-[1.1fr_.9fr] gap-4">
+                            <div class="rounded-[24px] border bg-[linear-gradient(135deg,rgba(16,24,40,.96),rgba(40,53,80,.92))] text-white p-5">
+                                <div class="text-[11px] uppercase tracking-[0.22em] text-white/60">Automation Console</div>
+                                <div class="text-2xl font-bold mt-3 leading-tight">像 SaaS 中台一样，下达一条任务并自动编排选品、供货与售卖素材。</div>
+                                <div class="grid grid-cols-3 gap-3 mt-5 text-xs">
+                                    <div class="rounded-2xl bg-white/10 p-3"><div class="text-white/60">输入源</div><div class="font-semibold mt-1">图片 / 文字 / 语音</div></div>
+                                    <div class="rounded-2xl bg-white/10 p-3"><div class="text-white/60">执行模式</div><div class="font-semibold mt-1">自动编排</div></div>
+                                    <div class="rounded-2xl bg-white/10 p-3"><div class="text-white/60">交付物</div><div class="font-semibold mt-1">详情页 / 商品图</div></div>
+                                </div>
+                            </div>
+                            <div class="rounded-[24px] border bg-white/75 p-5">
+                                <div class="text-sm font-semibold">自动化任务输入</div>
+                                <div class="text-xs text-[var(--muted)] mt-1">适合“一句话跑完整条业务链路”，生成可直接用于电商售卖的素材与候选商品。</div>
+                                <div class="grid grid-cols-2 gap-3 mt-4 text-sm">
+                                    <div class="rounded-2xl bg-[rgba(184,69,32,.08)] p-3"><div class="text-[11px] text-[var(--muted)]">当前模式</div><div class="font-semibold mt-1" id="chatModeLabel">自动模式</div></div>
+                                    <div class="rounded-2xl bg-[rgba(47,93,80,.08)] p-3"><div class="text-[11px] text-[var(--muted)]">目标市场</div><div class="font-semibold mt-1" id="chatMarketLabel">全部国家</div></div>
+                                    <div class="rounded-2xl bg-[rgba(15,23,42,.04)] p-3"><div class="text-[11px] text-[var(--muted)]">执行输出</div><div class="font-semibold mt-1">榜单 / 供应链 / 图片</div></div>
+                                    <div class="rounded-2xl bg-[rgba(15,23,42,.04)] p-3"><div class="text-[11px] text-[var(--muted)]">素材用途</div><div class="font-semibold mt-1">电商售卖</div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid xl:grid-cols-[1.2fr_.8fr] gap-4">
+                            <div class="rounded-[24px] border bg-white/78 p-4">
+                                <div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-sm font-semibold">任务队列</div><div class="text-xs text-[var(--muted)] mt-1">当前排队与最近执行任务</div></div><span class="text-xs text-[var(--muted)]" id="chatQueueCount">0 条任务</span></div>
+                                <div id="chatTaskQueue" class="space-y-2 text-sm text-[var(--muted)]"><div class="rounded-2xl border bg-white p-3">暂无任务，输入后自动加入队列。</div></div>
+                            </div>
+                            <div class="rounded-[24px] border bg-white/78 p-4">
+                                <div class="text-sm font-semibold">模块状态灯</div>
+                                <div class="text-xs text-[var(--muted)] mt-1">展示自动化链路当前进度</div>
+                                <div id="chatModuleLights" class="grid grid-cols-2 gap-3 mt-4 text-sm">
+                                    <div class="rounded-2xl border bg-white p-3"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span><span>热销榜</span></div><div class="text-xs text-[var(--muted)] mt-2">待执行</div></div>
+                                    <div class="rounded-2xl border bg-white p-3"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span><span>供应链</span></div><div class="text-xs text-[var(--muted)] mt-2">待执行</div></div>
+                                    <div class="rounded-2xl border bg-white p-3"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span><span>详情页</span></div><div class="text-xs text-[var(--muted)] mt-2">待执行</div></div>
+                                    <div class="rounded-2xl border bg-white p-3"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span><span>商品图</span></div><div class="text-xs text-[var(--muted)] mt-2">待执行</div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-3 justify-between">
+                            <div>
+                                <div class="text-sm font-semibold">自动化任务输入</div>
+                                <div class="text-xs text-[var(--muted)] mt-1">支持图片、国家、自然语言指令，适合“一句话跑完整条业务链路”。</div>
+                            </div>
+                            <select id="chatCountry" class="rounded-2xl border px-4 py-3 text-sm bg-white/80 min-w-[160px]">
+                                <option value="">🌍 全部国家</option><option value="US">🇺🇸 美国</option><option value="GB">🇬🇧 英国</option><option value="ID">🇮🇩 印尼</option><option value="TH">🇹🇭 泰国</option><option value="JP">🇯🇵 日本</option><option value="KR">🇰🇷 韩国</option><option value="VN">🇻🇳 越南</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-wrap gap-2" id="chatSceneChips">
+                            <span class="chip on" onclick="setChatScene('auto')" data-scene="auto">自动模式</span>
+                            <span class="chip" onclick="setChatScene('ranking')" data-scene="ranking">热销榜</span>
+                            <span class="chip" onclick="setChatScene('supply')" data-scene="supply">1688找货</span>
+                            <span class="chip" onclick="setChatScene('detail')" data-scene="detail">详情页</span>
+                            <span class="chip" onclick="setChatScene('image')" data-scene="image">图像生成</span>
+                        </div>
+                        <textarea id="chatInput" rows="4" class="w-full resize-none bg-white/75 border rounded-[24px] outline-none text-sm leading-7 px-4 py-4" placeholder="输入需求：帮我找美国热销的手机壳，输出图片、产品标题、价格、日销量、近7天销量，并自动匹配1688同款，再生成适合电商售卖的详情页和商品图。"></textarea>
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4 chat-input-wrap">
+                            <div class="flex flex-wrap gap-2 items-center">
+                                <button onclick="document.getElementById('chatImage').click()" class="action-btn">上传图片</button>
+                                <input id="chatImage" type="file" accept="image/*" class="hidden" onchange="handleChatImage(this)">
+                                <button onclick="startVoice()" id="voiceBtn" class="voice-btn action-btn">语音输入</button>
+                                <button onclick="fillChatTemplate()" class="action-btn">补全提示词</button>
+                                <span id="chatAttachmentLabel" class="text-xs text-[var(--muted)]"></span>
+                            </div>
+                            <button onclick="prepareChat()" class="px-5 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">开始执行自动化</button>
+                        </div>
+                        <div id="confirmPanel" class="hidden rounded-[24px] border bg-[rgba(184,69,32,.08)] p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div><div class="font-semibold text-[var(--accent-strong)]">执行确认</div><div id="confirmText" class="text-sm text-[var(--muted)] mt-1"></div></div>
+                                <div class="flex gap-2"><button onclick="confirmSend()" class="px-4 py-2 rounded-full text-sm text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">确认执行</button><button onclick="cancelConfirm()" class="px-4 py-2 rounded-full bg-white text-sm border">取消</button></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="soft-card rounded-[28px] p-5 flex-1 flex flex-col">
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <div>
+                                <div class="text-lg font-bold">全自动选品执行台</div>
+                                <div class="text-xs text-[var(--muted)] mt-1">上面看消息，下面直接输入。系统会自动补全提示词并发起全流程执行。</div>
+                            </div>
+                            <div id="chatCommandSummary" class="text-xs text-[var(--muted)]">等待指令</div>
+                        </div>
+                        <div id="chatMessages" class="overflow-y-auto space-y-4 pr-1 flex-1">
+                            <div class="text-center text-[var(--muted)] py-16">
+                                <p class="serif-title text-3xl text-[var(--text)] mb-3">自动化执行台已就绪</p>
+                                <p class="text-sm">直接输入一句话需求，系统会自动完善提示词、补齐国家语境，并串联热销榜、找货、详情页和商品图。</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="space-y-4 chat-minimal-hide">
+                    <div class="soft-card rounded-[28px] p-5">
+                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">自动化流程看板</div><div class="text-xs text-[var(--muted)] mt-1">问答页单独承接整条自动化链路。</div></div><span class="px-3 py-1 rounded-full bg-[rgba(47,93,80,.08)] text-[var(--forest)] text-xs font-semibold">Auto</span></div>
+                        <div id="chatWorkflowBoard" class="space-y-3 text-sm">
+                            <div class="rounded-2xl border bg-white/70 p-4 text-[var(--muted)]">等待执行后展示：热销榜抓取、供应链匹配、详情页与商品图生成、收藏与上架动作。</div>
+                        </div>
+                    </div>
+                    <div class="soft-card rounded-[28px] p-5">
+                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">当前选中商品</div><div class="text-xs text-[var(--muted)] mt-1">用于后续生成详情页、商品图与上架动作。</div></div><span class="text-xs text-[var(--muted)]" id="chatSelectedLabel">未选择</span></div>
+                        <div id="chatSelectedProduct" class="rounded-2xl border bg-white/70 p-4 text-sm text-[var(--muted)]">执行后自动选中当前商品。</div>
+                    </div>
+                    <div class="soft-card rounded-[28px] p-5">
+                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">素材状态</div><div class="text-xs text-[var(--muted)] mt-1">详情页、商品图、标签生成状态。</div></div><span class="text-xs text-[var(--muted)]">Assets</span></div>
+                        <div id="chatAssetStatus" class="grid grid-cols-3 gap-3 text-sm">
+                            <div class="rounded-2xl border bg-white/70 p-3"><div class="text-[11px] text-[var(--muted)]">详情页</div><div class="font-semibold mt-2">待生成</div></div>
+                            <div class="rounded-2xl border bg-white/70 p-3"><div class="text-[11px] text-[var(--muted)]">商品图</div><div class="font-semibold mt-2">待生成</div></div>
+                            <div class="rounded-2xl border bg-white/70 p-3"><div class="text-[11px] text-[var(--muted)]">标签</div><div class="font-semibold mt-2">待生成</div></div>
+                        </div>
+                    </div>
+                    <div class="soft-card rounded-[28px] p-5">
+                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">自动化结果池</div><div class="text-xs text-[var(--muted)] mt-1">展示图片、产品标题、价格、日销量、近7天销量及右侧操作按钮。</div></div><button onclick="loadRanking()" class="action-btn">同步榜单</button></div>
+                        <div id="chatAutoResults" class="space-y-3 text-sm text-[var(--muted)]">
+                            <div class="rounded-2xl border bg-white/70 p-4">执行后将在此生成自动化候选商品结果卡。</div>
+                        </div>
+                    </div>
+                    <div class="soft-card rounded-[28px] p-5">
+                        <div class="flex items-center justify-between gap-3 mb-4"><div><div class="text-lg font-bold">下一步推荐动作</div><div class="text-xs text-[var(--muted)] mt-1">全自动流程完成后，用于推向新平台售卖。</div></div><span class="text-xs text-[var(--muted)]">Next</span></div>
+                        <div id="chatNextActions" class="space-y-2 text-sm text-[var(--muted)]"><div class="rounded-2xl border bg-white/70 p-4">等待执行后推荐：生成详情页、生成商品图、补充售卖 tag、上架店铺。</div></div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- ==================== 3. 排行榜 ==================== -->
+<div id="page-ranking" class="page">
+    <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+        <section class="glass rounded-[28px] p-5">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+                <div>
+                    <h2 class="serif-title text-3xl font-bold">全球热销排行榜</h2>
+                    <p class="text-sm text-[var(--muted)] mt-1">竖版降序展示，支持销量榜 / 飙升榜 与日榜 / 近7天 / 月榜</p>
+                </div>
+                <button onclick="loadRanking()" class="action-btn">刷新榜单</button>
+            </div>
+            <div class="space-y-3">
+                <div class="flex flex-wrap gap-2" id="countryChips">
+                    <span class="chip on" onclick="setFilter('country','')" data-v="">🌍 全部</span>
+                    <span class="chip" onclick="setFilter('country','US')" data-v="US">🇺🇸 美国</span>
+                    <span class="chip" onclick="setFilter('country','GB')" data-v="GB">🇬🇧 英国</span>
+                    <span class="chip" onclick="setFilter('country','ID')" data-v="ID">🇮🇩 印尼</span>
+                    <span class="chip" onclick="setFilter('country','TH')" data-v="TH">🇹🇭 泰国</span>
+                    <span class="chip" onclick="setFilter('country','JP')" data-v="JP">🇯🇵 日本</span>
+                    <span class="chip" onclick="setFilter('country','KR')" data-v="KR">🇰🇷 韩国</span>
+                    <span class="chip" onclick="setFilter('country','VN')" data-v="VN">🇻🇳 越南</span>
+                    <span class="chip" onclick="setFilter('country','PH')" data-v="PH">🇵🇭 菲律宾</span>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <div class="flex gap-2" id="rankChips"><span class="chip on" onclick="setFilter('rank','sales')" data-v="sales">销量榜</span><span class="chip" onclick="setFilter('rank','growth')" data-v="growth">飙升榜</span></div>
+                    <div class="flex gap-2" id="timeChips"><span class="chip on" onclick="setFilter('time','daily')" data-v="daily">日榜</span><span class="chip" onclick="setFilter('time','weekly')" data-v="weekly">近7天</span><span class="chip" onclick="setFilter('time','monthly')" data-v="monthly">月榜</span></div>
+                    <input id="rankingCategory" type="text" placeholder="筛选品类" class="ml-auto min-w-[220px] rounded-full border px-4 py-2 text-sm bg-white/80" onkeydown="if(event.key==='Enter')loadRanking()">
+                </div>
+            </div>
+        </section>
+        <div id="rankingMeta" class="soft-card rounded-[24px] p-4 text-sm text-[var(--muted)]">展示字段：图片、产品标题、价格、日销量、近7天销量、品类、操作按钮。不同国家榜单独立查看，统一导向详情页、商品图、收藏与店铺上架。</div>
+        <section id="rankingList" class="space-y-3"><div class="text-center text-[var(--muted)] py-12">加载中...</div></section>
+    </div>
+</div>
+
+<!-- ==================== 4. 供应链 ==================== -->
+<div id="page-supply" class="page">
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+        <section class="glass rounded-[28px] p-5">
+            <div class="grid lg:grid-cols-2 gap-5">
+                <div class="soft-card rounded-[24px] p-5">
+                    <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-bold">关键词匹配供应商</h3><button onclick="matchSuppliers()" class="action-btn">立即搜索</button></div>
+                    <input id="supplyKw" type="text" placeholder="输入商品关键词" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm mb-3" onkeydown="if(event.key==='Enter')matchSuppliers()">
+                    <div id="supplyResults" class="space-y-3 text-sm text-[var(--muted)]"></div>
+                </div>
+                <div class="soft-card rounded-[24px] p-5">
+                    <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-bold">以图搜货（1688）</h3><button onclick="imgSearch()" class="action-btn">开始图搜</button></div>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="border-2 border-dashed rounded-[22px] p-6 text-center cursor-pointer bg-white/60" onclick="document.getElementById('imgFile').click()"><input type="file" id="imgFile" accept="image/*" class="hidden" onchange="previewImg(this)"><div id="imgPreview"></div><p id="imgHint" class="text-sm text-[var(--muted)]">点击上传商品图片</p></div>
+                        <div class="space-y-3"><input id="imgUrl" type="text" placeholder="或输入图片URL" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><div class="rounded-[22px] bg-[rgba(246,215,127,.2)] p-4 text-sm text-[var(--muted)]">支持榜单商品跳转图搜，识别近似同款后继续比价与利润测算。</div></div>
+                    </div>
+                    <div id="imgResults" class="mt-4 space-y-3 text-sm text-[var(--muted)]"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- ==================== 5. 内容生成 ==================== -->
+<div id="page-content" class="page">
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+        <section class="glass rounded-[28px] p-5 space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div><h2 class="serif-title text-3xl font-bold">内容生成工作台</h2><p class="text-sm text-[var(--muted)] mt-1">商品详情页与图像生成，支持国家与更丰富的 prompt 输入</p></div>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="setContentTab('detail')" class="sub-tab active px-4 py-2 text-sm rounded-full bg-white" data-ct="detail">商品详情页</button>
+                    <button onclick="setContentTab('image')" class="sub-tab px-4 py-2 text-sm rounded-full bg-white" data-ct="image">图像生成</button>
+                </div>
+            </div>
+            <div id="ct-detail" class="ct-panel grid lg:grid-cols-[.92fr_1.08fr] gap-5">
+                <div class="soft-card rounded-[24px] p-5 space-y-3"><input id="dpTitle" type="text" placeholder="商品标题" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><div class="grid md:grid-cols-2 gap-3"><input id="dpPrice" type="number" placeholder="价格" value="9.99" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><input id="dpCategory" type="text" placeholder="商品品类" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"></div><select id="dpCountry" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><option value="US">🇺🇸 美国</option><option value="GB">🇬🇧 英国</option><option value="ID">🇮🇩 印尼</option><option value="TH">🇹🇭 泰国</option><option value="JP">🇯🇵 日本</option><option value="KR">🇰🇷 韩国</option><option value="VN">🇻🇳 越南</option><option value="global">🌍 全球</option></select><textarea id="dpPrompt" rows="4" placeholder="补充要求：页面风格干净整洁、突出卖点与信任感。" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm resize-none"></textarea><button onclick="genDetail()" class="w-full py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">生成商品详情页</button></div>
+                <div id="detailOut" class="soft-card rounded-[24px] p-5 min-h-[360px] flex items-center justify-center text-sm text-[var(--muted)]">详情页结果展示区</div>
+            </div>
+            <div id="ct-image" class="ct-panel hidden grid lg:grid-cols-[.92fr_1.08fr] gap-5">
+                <div class="soft-card rounded-[24px] p-5 space-y-3"><div class="rounded-[22px] bg-[rgba(47,93,80,.08)] border border-[rgba(47,93,80,.12)] p-4"><div class="text-sm font-semibold text-[var(--forest)]">Picset 工作流</div><div class="text-xs text-[var(--muted)] mt-1">先确认 Prompt、模型、比例，再生成图片草稿，不直接一步完成。</div></div><input id="imTitle" type="text" placeholder="商品标题" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><div class="grid md:grid-cols-2 gap-3"><input id="imCategory" type="text" placeholder="商品品类" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><select id="imCountry" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><option value="US">🇺🇸 美国</option><option value="GB">🇬🇧 英国</option><option value="ID">🇮🇩 印尼</option><option value="TH">🇹🇭 泰国</option><option value="JP">🇯🇵 日本</option><option value="global">🌍 全球</option></select></div><div class="grid md:grid-cols-2 gap-3"><input id="imProvider" type="text" value="picset-seed" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><input id="imModel" type="text" value="Seed 2.0" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"></div><div class="grid md:grid-cols-2 gap-3"><select id="imStyle" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><option value="modern">现代简约</option><option value="luxury">高端奢华</option><option value="cute">可爱卡通</option><option value="tech">科技感</option><option value="minimal-clean">干净整洁电商风</option></select><select id="imAspect" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm"><option value="4:5">4:5 商品图</option><option value="1:1">1:1 方图</option><option value="9:16">9:16 竖版海报</option></select></div><textarea id="imPrompt" rows="5" placeholder="输入更多更丰富的 prompt，例如：米白背景、产品居中、日系家居氛围。" class="w-full px-4 py-3 rounded-2xl border bg-white/80 text-sm resize-none"></textarea><div class="flex gap-3"><button onclick="previewImageJob()" class="flex-1 py-3 rounded-full bg-white text-[var(--forest)] text-sm font-semibold border">先预览任务</button><button onclick="genImage()" class="flex-1 py-3 rounded-full bg-[var(--forest)] text-white text-sm font-semibold">确认并生成草稿</button></div></div>
+                <div id="imageOut" class="soft-card rounded-[24px] p-5 min-h-[360px] flex items-center justify-center text-sm text-[var(--muted)]">图像结果展示区</div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- ==================== 6. 采购管理 ==================== -->
+<div id="page-purchase" class="page">
+    <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+        <section class="glass rounded-[28px] p-5">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+                <div>
+                    <h2 class="serif-title text-3xl font-bold">商务订单流程</h2>
+                    <p class="text-sm text-[var(--muted)] mt-1">按真实商务流程分步确认：订单信息 → 店铺绑定 → 供应商确认 → 支付方式 → 履约。</p>
+                </div>
+                <button onclick="resetOrderWizard()" class="action-btn">重置流程</button>
+            </div>
+            <div class="grid xl:grid-cols-[1.25fr_.75fr] gap-5">
+                <div class="space-y-4">
+                    <div class="soft-card rounded-[28px] p-6 border border-[rgba(32,25,19,.06)]">
+                        <div class="flex flex-wrap items-center justify-between gap-4 mb-5"><div><div class="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Order Workspace</div><div class="text-xl font-bold mt-1">订单建单与商务审批</div></div><div class="flex gap-2"><button onclick="resetOrderWizard()" class="action-btn">重置流程</button><button onclick="loadOrders()" class="action-btn">刷新订单</button></div></div>
+                        <div class="grid grid-cols-5 gap-2 mb-5 text-xs" id="orderStageBar">
+                            <div class="rounded-2xl border bg-[rgba(184,69,32,.08)] text-[var(--accent-strong)] px-3 py-3 font-semibold">01<br><span class="text-[11px] font-medium">订单草稿</span></div>
+                            <div class="rounded-2xl border bg-white/70 px-3 py-3">02<br><span class="text-[11px]">店铺确认</span></div>
+                            <div class="rounded-2xl border bg-white/70 px-3 py-3">03<br><span class="text-[11px]">供应商确认</span></div>
+                            <div class="rounded-2xl border bg-white/70 px-3 py-3">04<br><span class="text-[11px]">支付发起</span></div>
+                            <div class="rounded-2xl border bg-white/70 px-3 py-3">05<br><span class="text-[11px]">履约完成</span></div>
+                        </div>
+                        <div class="grid lg:grid-cols-2 gap-3">
+                            <input id="ordProduct" type="text" placeholder="商品名称" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm">
+                            <input id="ordProductId" type="text" placeholder="商品ID（可选）" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm">
+                            <input id="ordQty" type="number" value="1" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm">
+                            <input id="ordPrice" type="number" placeholder="单价(USD)" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm">
+                            <input id="ordCustomer" type="text" placeholder="客户名称" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm">
+                            <input id="ordEmail" type="text" placeholder="客户邮箱" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm">
+                        </div>
+                        <textarea id="ordAddress" rows="3" placeholder="收货地址 / 履约备注" class="w-full mt-3 px-4 py-3 rounded-2xl border bg-white/90 text-sm resize-none"></textarea>
+                        <div class="grid md:grid-cols-2 xl:grid-cols-5 gap-3 mt-4">
+                            <button onclick="createOrder()" class="px-4 py-3 rounded-2xl text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">创建订单草稿</button>
+                            <button onclick="confirmStoreStep()" class="px-4 py-3 rounded-2xl bg-white border text-sm font-semibold">确认店铺</button>
+                            <button onclick="confirmSupplierStep()" class="px-4 py-3 rounded-2xl bg-white border text-sm font-semibold">确认供应商</button>
+                            <button onclick="openPaymentStep()" class="px-4 py-3 rounded-2xl bg-white border text-sm font-semibold">选择支付</button>
+                            <button onclick="markCurrentOrderPaid()" class="px-4 py-3 rounded-2xl bg-[#2d2520] text-white text-sm font-semibold">标记已支付</button>
+                        </div>
+                    </div>
+                    <div class="grid xl:grid-cols-[1.1fr_.9fr] gap-4">
+                        <div id="orderWorkflowCard" class="soft-card rounded-[24px] p-5 text-sm text-[var(--muted)]">先创建订单草稿，系统再引导你逐步确认商务节点。</div>
+                        <div id="paymentStepCard" class="soft-card rounded-[24px] p-5 space-y-3 border border-[rgba(32,25,19,.06)]">
+                            <div class="flex items-center justify-between"><h3 class="text-lg font-bold">支付发起</h3><span class="text-xs text-[var(--muted)]">国内 / 国际</span></div>
+                            <select id="payChannel" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm"></select>
+                            <div class="grid md:grid-cols-2 gap-3">
+                                <input id="payAmount" type="number" placeholder="支付金额" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm">
+                                <select id="payCurrency" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm"><option value="CNY">CNY</option><option value="USD">USD</option></select>
+                            </div>
+                            <input id="paySubject" type="text" value="跨境电商订单支付" class="w-full px-4 py-3 rounded-2xl border bg-white/90 text-sm">
+                            <button onclick="createOrderPayment()" class="w-full py-3 rounded-2xl bg-[#2d2520] text-white text-sm font-semibold">创建支付单</button>
+                            <div id="paymentResult" class="text-xs text-[var(--muted)] leading-6">支付单创建后，会显示支付链接或待云端接入说明。</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="soft-card rounded-[28px] p-5 border border-[rgba(32,25,19,.06)]"><div class="flex justify-between items-center mb-4"><div><h2 class="serif-title text-2xl font-bold">订单池</h2><div class="text-xs text-[var(--muted)] mt-1">最近订单 / 审批状态</div></div><button onclick="loadOrders()" class="action-btn">刷新</button></div><div id="orderList" class="space-y-3 text-sm text-[var(--muted)] max-h-[480px] overflow-y-auto">暂无</div></div>
+                    <div class="soft-card rounded-[28px] p-5 border border-[rgba(32,25,19,.06)]"><div class="flex justify-between items-center mb-4"><div><h3 class="text-lg font-bold">当前订单详情</h3><div class="text-xs text-[var(--muted)] mt-1">审批、支付、利润与备注</div></div><span id="currentOrderBadge" class="text-xs text-[var(--muted)]">未选择</span></div><div id="orderDetail" class="text-sm text-[var(--muted)]">请选择一笔订单查看分阶段详情。</div></div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- ==================== 用户中心 Modal ==================== -->
+<div id="userModal" class="fixed inset-0 modal-bg z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#fbf6ef] rounded-[28px] w-full max-w-[980px] max-h-[88vh] overflow-y-auto shadow-2xl border">
+        <div class="flex justify-between items-center p-5 border-b sticky top-0 bg-[#fbf6ef]"><div><h2 class="serif-title text-2xl font-bold">用户中心 / 店铺绑定</h2><p class="text-sm text-[var(--muted)] mt-1">更接近商务系统的店铺授权、绑定与解绑确认流。</p></div><button onclick="closeModal('userModal')" class="text-xl w-10 h-10 rounded-full hover:bg-white">×</button></div>
+        <div class="p-5 grid xl:grid-cols-[.95fr_1.05fr] gap-5"><div class="soft-card rounded-[24px] p-5 space-y-4"><div class="rounded-[22px] border bg-white/70 p-4"><div class="text-sm font-semibold">绑定向导</div><div class="text-xs text-[var(--muted)] mt-1">先填写店铺基础信息，再确认国家站点与授权信息，最后完成绑定。</div></div><div class="grid md:grid-cols-2 gap-3"><select id="bPlatform" class="w-full px-4 py-3 text-sm rounded-2xl border bg-white/80"><option value="tiktok">TikTok Shop</option><option value="shopee">Shopee</option><option value="lazada">Lazada</option><option value="amazon">Amazon</option></select><select id="bCountry" class="w-full px-4 py-3 text-sm rounded-2xl border bg-white/80"><option value="US">🇺🇸 美国</option><option value="GB">🇬🇧 英国</option><option value="ID">🇮🇩 印尼</option><option value="TH">🇹🇭 泰国</option><option value="VN">🇻🇳 越南</option><option value="MY">🇲🇾 马来西亚</option><option value="PH">🇵🇭 菲律宾</option><option value="JP">🇯🇵 日本</option></select></div><input id="bName" type="text" placeholder="店铺名称" class="w-full px-4 py-3 text-sm rounded-2xl border bg-white/80"><input id="bUrl" type="text" placeholder="店铺链接" class="w-full px-4 py-3 text-sm rounded-2xl border bg-white/80"><input id="bToken" type="text" placeholder="Access Token（可选）" class="w-full px-4 py-3 text-sm rounded-2xl border bg-white/80"><div class="rounded-[22px] bg-[rgba(184,69,32,.08)] p-4 text-xs text-[var(--muted)] leading-6">绑定后可用于：商品上架归属、订单来源识别、国家站点匹配、支付与履约映射。真实 OAuth/平台授权后续可在云端环境继续接入。</div><div class="flex gap-3"><button onclick="previewBinding()" class="flex-1 py-3 rounded-full bg-white border text-sm font-semibold">先确认绑定信息</button><button onclick="bindStore()" class="flex-1 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">确认绑定店铺</button></div><div id="bindingPreview" class="text-xs text-[var(--muted)]">请先填写店铺信息。</div></div><div class="space-y-4"><div class="soft-card rounded-[24px] p-5 text-sm text-[var(--muted)] leading-7">• 不同国家热销榜可与对应店铺国家站点联动<br>• 可将“上架店铺”动作绑定到当前店铺<br>• 后续可扩展自动上架、同步库存、订单归集、平台授权刷新</div><div class="soft-card rounded-[24px] p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-bold">已绑定店铺</h3><button onclick="loadBindings()" class="action-btn">刷新</button></div><div id="storeList" class="space-y-3 text-sm text-[var(--muted)]">暂无</div></div></div></div>
+    </div>
+</div>
+
+<div id="unbindModal" class="fixed inset-0 modal-bg z-[60] hidden flex items-center justify-center p-4">
+    <div class="bg-[#fbf6ef] rounded-[28px] w-full max-w-[520px] shadow-2xl border p-6 space-y-4">
+        <div><h3 class="serif-title text-2xl font-bold">确认解绑店铺</h3><p class="text-sm text-[var(--muted)] mt-1">解绑后，该店铺将无法继续接收上架、订单归属与支付映射。</p></div>
+        <div id="unbindText" class="rounded-[22px] border bg-white/70 p-4 text-sm text-[var(--muted)]">确认信息加载中...</div>
+        <div class="rounded-[22px] bg-[rgba(184,69,32,.08)] p-4 text-xs text-[var(--muted)]">建议仅在店铺停用、授权失效或业务主体切换时执行解绑。</div>
+        <div class="flex gap-3 justify-end"><button onclick="closeModal('unbindModal')" class="px-4 py-2 rounded-full bg-white border text-sm">取消</button><button onclick="confirmUnbind()" class="px-4 py-2 rounded-full text-sm text-white" style="background:linear-gradient(135deg,#7b1e12,#b84520)">确认解绑</button></div>
+    </div>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
