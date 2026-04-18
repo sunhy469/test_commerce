@@ -7,6 +7,7 @@ let chatScene = 'auto';
 let chatTaskItems = [];
 let localChatSessions = [];
 let activeSessionId = '';
+let dashboardOverviewChart = null;
 
 document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); });
 
@@ -37,6 +38,7 @@ async function loadDashboard() {
         document.getElementById('statContents').textContent = stats.content_records || 0;
 
         const trend = build7DayTrend(acts.activities || []);
+        drawOverviewTrendChart('chartOverview', trend.dates, { 操作数: trend.values });
         drawTrendChart('chartProducts', trend.dates, trend.values.map(v => Math.max(v, stats.products || 0)));
         drawTrendChart('chartAnalyses', trend.dates, trend.values.map((v, i) => v + (i % 3) + (stats.analyses || 0)));
         drawTrendChart('chartSuppliers', trend.dates, trend.values.map((v, i) => Math.max(0, v - (i % 2)) + (stats.supplier_matches || 0)));
@@ -101,6 +103,54 @@ function drawTrendChart(canvasId, labels, values) {
     labels.forEach((lb, i) => {
         const x = stepX * (i + 1) - 10;
         ctx.fillText(lb, x, h - 8);
+    });
+}
+
+function drawOverviewTrendChart(canvasId, labels, seriesMap) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const seriesEntries = Object.entries(seriesMap || {}).filter(([, vals]) => Array.isArray(vals) && vals.length);
+    if (!seriesEntries.length) return;
+    if (typeof Chart === 'undefined') return;
+    if (dashboardOverviewChart) {
+        dashboardOverviewChart.destroy();
+        dashboardOverviewChart = null;
+    }
+    const colors = ['#b84520', '#2f5d50', '#6b7280', '#7c3aed'];
+    const datasets = seriesEntries.map(([name, vals], idx) => ({
+        label: name,
+        data: vals.map(v => Number(v) || 0),
+        borderColor: colors[idx % colors.length],
+        backgroundColor: colors[idx % colors.length] + '33',
+        pointRadius: 3,
+        pointHoverRadius: 4,
+        borderWidth: 2,
+        tension: 0.25,
+        fill: false,
+    }));
+    dashboardOverviewChart = new Chart(canvas, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
+                tooltip: { mode: 'index', intersect: false },
+            },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false },
+            scales: {
+                x: {
+                    title: { display: true, text: '日期' },
+                    grid: { color: 'rgba(126,96,60,.12)' },
+                },
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: '数据' },
+                    grid: { color: 'rgba(126,96,60,.12)' },
+                },
+            },
+        },
     });
 }
 
@@ -184,6 +234,11 @@ async function sendChat(overrideMsg = '') {
         });
         const d = await res.json();
         chatSession = d.session_id || chatSession;
+        const active = localChatSessions.find(s => s.id === activeSessionId);
+        if (active) {
+            active.backend_session_id = chatSession;
+            saveLocalChats();
+        }
         document.getElementById('thinking')?.remove();
         addMsg('ai', d.reply || '完成');
         persistChatMessage('assistant', d.reply || '完成');
@@ -370,17 +425,10 @@ function renderAutoProductCard(p, i) {
 let chatLoaded = false;
 async function loadChatHistory() {
     renderLocalHistoryChips();
-    if (chatLoaded) return; chatLoaded = true;
-    try {
-        const res = await fetch(API + '/api/chat/history?limit=20');
-        const d = await res.json();
-        if (d.messages && d.messages.length) {
-            chatSession = d.messages[0].session_id || '';
-            d.messages.slice().reverse().forEach(m => addMsg(m.role === 'user' ? 'user' : 'ai', m.content));
-        }
-        const modeLabel = document.getElementById('chatModeLabel');
-        if (modeLabel) modeLabel.textContent = sceneLabel(chatScene);
-    } catch (e) {}
+    if (chatLoaded) return;
+    chatLoaded = true;
+    const modeLabel = document.getElementById('chatModeLabel');
+    if (modeLabel) modeLabel.textContent = sceneLabel(chatScene);
 }
 
 // === Ranking ===
@@ -688,8 +736,11 @@ async function confirmUnbind() {
 
 function setStatus(msg) {
     const el = document.getElementById('statusText');
+    if (!el) return;
     el.textContent = msg;
-    setTimeout(() => el.textContent = '系统就绪', 2500);
+    setTimeout(() => {
+        if (el) el.textContent = '系统就绪';
+    }, 2500);
 }
 
 
@@ -710,7 +761,7 @@ function initLocalChats() {
 
 function startNewChat() {
     const id = `chat_${Date.now()}`;
-    const item = { id, title: '新聊天', created_at: new Date().toISOString(), messages: [] };
+    const item = { id, title: '新聊天', created_at: new Date().toISOString(), messages: [], backend_session_id: '' };
     localChatSessions.unshift(item);
     localChatSessions = localChatSessions.slice(0, 20);
     activeSessionId = id;
@@ -738,6 +789,7 @@ function persistChatMessage(role, content) {
 function restoreLocalSession(sessionId) {
     const session = localChatSessions.find(s => s.id === sessionId);
     if (!session) return;
+    chatSession = session.backend_session_id || '';
     const box = document.getElementById('chatMessages');
     if (!box) return;
     box.innerHTML = '';
@@ -763,10 +815,16 @@ function renderLocalHistoryChips() {
     `).join('');
 }
 
-function deleteChatSession(id, event) {
+async function deleteChatSession(id, event) {
     if (event) event.stopPropagation();
     const idx = localChatSessions.findIndex(s => s.id === id);
     if (idx === -1) return;
+    const deleting = localChatSessions[idx];
+    if (deleting?.backend_session_id) {
+        try {
+            await fetch(API + `/api/chat/history/${encodeURIComponent(deleting.backend_session_id)}`, { method: 'DELETE' });
+        } catch (e) {}
+    }
     const wasActive = activeSessionId === id;
     localChatSessions.splice(idx, 1);
 

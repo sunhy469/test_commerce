@@ -365,6 +365,14 @@ async def get_chat_history(session_id: str = "", limit: int = 50):
         return {"messages": [dict(r) for r in rows]}
 
 
+@chat_router.delete("/history/{session_id}")
+async def delete_chat_history(session_id: str):
+    """删除指定会话历史"""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM chat_history WHERE session_id=?", (session_id,))
+    return {"ok": True, "session_id": session_id}
+
+
 def _save_chat(session_id: str, role: str, content: str, action_type: str = None, action_result: str = None):
     with get_conn() as conn:
         conn.execute(
