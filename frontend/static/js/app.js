@@ -9,6 +9,7 @@ let localChatSessions = [];
 let activeSessionId = '';
 const dashboardMiniCharts = {};
 let dashboardModule = 'overview';
+let dashboardPanel = 'charts';
 
 document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); loadChatHistory(); updateSidebarHistoryVisibility('chat'); });
 
@@ -87,6 +88,20 @@ function statusTag(type, text) { return `<span class="status-tag ${type}">${esca
 function sectionCard(title, subtitle, content) { return `<section class="section-card p-5"><div class="flex items-start justify-between mb-4"><div><h3 class="text-lg font-bold">${title}</h3><div class="text-xs text-[var(--muted)] mt-1">${subtitle || ''}</div></div></div>${content}</section>`; }
 function dashboardModuleLabel(key) { return ({ overview:'总览', orders:'订单管理', products:'商品管理', contentlive:'内容与直播', affiliate:'联盟带货', logistics:'物流履约', finance:'财务结算', health:'店铺健康', messages:'客户消息', settings:'设置' })[key] || key; }
 
+
+function switchDashboardPanel(panelKey) {
+    dashboardPanel = panelKey;
+    loadDashboard();
+}
+
+function renderDashboardPanelTabs() {
+    const tabs = [
+        { key: 'charts', label: '总览图表' },
+        { key: 'module', label: '控制台模块' },
+    ];
+    return `<section class="section-card p-4"><div class="flex flex-wrap gap-2">${tabs.map(tab => `<button class="px-4 py-2 rounded-full text-sm border ${dashboardPanel === tab.key ? 'bg-[rgba(184,69,32,.1)] text-[var(--accent-strong)] border-[rgba(184,69,32,.2)]' : 'bg-white/70 border-[rgba(126,96,60,.14)]'}" onclick="switchDashboardPanel('${tab.key}')">${tab.label}</button>`).join('')}</div></section>`;
+}
+
 function renderFilterBar() {
     return `<section class="section-card p-4"><div class="flex flex-wrap items-center gap-2 text-sm"><select class="rounded-xl border px-3 py-2 bg-white" id="dashTimeRange"><option>今日</option><option selected>近7天</option><option>近30天</option><option>自定义</option></select><select class="rounded-xl border px-3 py-2 bg-white"><option>全部店铺</option><option>TradeAgent US</option><option>TradeAgent SEA</option></select><select class="rounded-xl border px-3 py-2 bg-white"><option>Global</option><option>US</option><option>UK</option><option>ID</option></select><button class="action-btn" onclick="loadDashboard()">刷新数据</button><button class="action-btn">导出报表</button><div class="ml-auto text-xs text-[var(--muted)]">Seller Center · 经营驾驶舱</div></div></section>`;
 }
@@ -95,7 +110,12 @@ function renderDashboardPage(data) {
     const kpi = data.kpi.map(item => `<div class="soft-card p-4 rounded-2xl"><div class="text-xs text-[var(--muted)]">${item.name}</div><div class="text-2xl font-black mt-2">${item.value}</div><div class="flex justify-between items-center mt-2"><span class="text-xs ${item.trend >= 0 ? 'text-emerald-700' : 'text-red-600'}">${item.trend >= 0 ? '↑' : '↓'} ${Math.abs(item.trend)}%</span><canvas id="spark_${item.key}" height="32"></canvas></div></div>`).join('');
     const todos = data.todos.map(t => `<div class="flex items-center justify-between border-b border-[rgba(126,96,60,.1)] py-2"><span class="text-sm">${t.name}</span><span class="font-semibold">${t.value}</span></div>`).join('');
     const topProducts = data.topProducts.map((p,i) => `<div class="flex items-center justify-between py-2 border-b border-[rgba(126,96,60,.1)]"><span>${i+1}. ${p.name}</span><span class="text-[var(--accent-strong)]">${p.gmv}</span></div>`).join('');
-    return `${renderFilterBar()}<section class="section-card p-5"><div class="flex justify-between"><div><h2 class="serif-title text-3xl font-black">Seller Center Dashboard</h2><p class="text-sm text-[var(--muted)] mt-1">经营、履约、财务、内容一体化总览</p></div>${data.state==='mock'?'<span class="status-tag warn">Mock Fallback</span>':''}</div><div class="seller-grid-kpi mt-4">${kpi}</div></section><div class="grid xl:grid-cols-3 gap-4"><section class="section-card p-5 xl:col-span-2"><h3 class="font-bold mb-3">GMV / 订单 / 买家趋势</h3><canvas id="chartTrend" height="120"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">收入构成</h3><canvas id="chartRevenueMix" height="160"></canvas></section></div><div class="grid xl:grid-cols-3 gap-4"><section class="section-card p-5"><h3 class="font-bold mb-3">流量来源</h3><canvas id="chartTraffic" height="140"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">订单状态分布</h3><canvas id="chartOrderStatus" height="140"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">店铺健康度</h3><div class="text-4xl font-black">${data.health.score}</div><div class="text-xs text-[var(--muted)] mt-2">违规率低于行业均值 ${data.health.delta}%</div></section></div><div class="grid xl:grid-cols-2 gap-4">${sectionCard('热销商品 Top10','GMV 排行',topProducts)}${sectionCard('待办与预警','订单、退款、库存、违规',todos)}</div><section class="section-card p-5"><div class="grid lg:grid-cols-[220px_1fr] gap-4"><aside class="rounded-2xl border bg-white/70 p-3"><div class="text-xs uppercase tracking-[0.18em] text-[var(--muted)] mb-2">控制台模块</div>${['overview','orders','products','contentlive','affiliate','logistics','finance','health','messages','settings'].map(m=>`<button class="w-full text-left px-3 py-2.5 rounded-xl text-sm mb-1 ${dashboardModule===m?'bg-[rgba(184,69,32,.1)] text-[var(--accent-strong)] font-semibold':'hover:bg-white'}" onclick="switchDashboardModule('${m}')">${dashboardModuleLabel(m)}</button>`).join('')}</aside><div id="dashboardModuleRoot"></div></div></section>`;
+
+    const chartBlock = `<section class="section-card p-5"><div class="flex justify-between"><div><h2 class="serif-title text-3xl font-black">Seller Center Dashboard</h2><p class="text-sm text-[var(--muted)] mt-1">经营、履约、财务、内容一体化总览</p></div>${data.state==='mock'?'<span class="status-tag warn">Mock Fallback</span>':''}</div><div class="seller-grid-kpi mt-4">${kpi}</div></section><div class="grid xl:grid-cols-3 gap-4"><section class="section-card p-5 xl:col-span-2"><h3 class="font-bold mb-3">GMV / 订单 / 买家趋势</h3><canvas id="chartTrend" height="120"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">收入构成</h3><canvas id="chartRevenueMix" height="160"></canvas></section></div><div class="grid xl:grid-cols-3 gap-4"><section class="section-card p-5"><h3 class="font-bold mb-3">流量来源</h3><canvas id="chartTraffic" height="140"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">订单状态分布</h3><canvas id="chartOrderStatus" height="140"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">店铺健康度</h3><div class="text-4xl font-black">${data.health.score}</div><div class="text-xs text-[var(--muted)] mt-2">违规率低于行业均值 ${data.health.delta}%</div></section></div><div class="grid xl:grid-cols-2 gap-4">${sectionCard('热销商品 Top10','GMV 排行',topProducts)}${sectionCard('待办与预警','订单、退款、库存、违规',todos)}</div>`;
+
+    const moduleBlock = `<section class="section-card p-5"><div class="grid lg:grid-cols-[220px_1fr] gap-4"><aside class="rounded-2xl border bg-white/70 p-3"><div class="text-xs uppercase tracking-[0.18em] text-[var(--muted)] mb-2">控制台模块</div>${['overview','orders','products','contentlive','affiliate','logistics','finance','health','messages','settings'].map(m=>`<button class="w-full text-left px-3 py-2.5 rounded-xl text-sm mb-1 ${dashboardModule===m?'bg-[rgba(184,69,32,.1)] text-[var(--accent-strong)] font-semibold':'hover:bg-white'}" onclick="switchDashboardModule('${m}')">${dashboardModuleLabel(m)}</button>`).join('')}</aside><div id="dashboardModuleRoot"></div></div></section>`;
+
+    return `${renderFilterBar()}${renderDashboardPanelTabs()}${dashboardPanel === 'charts' ? chartBlock : ''}${dashboardPanel === 'module' ? moduleBlock : ''}`;
 }
 
 function renderDashboardCharts(data) {
