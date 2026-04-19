@@ -9,7 +9,7 @@ let localChatSessions = [];
 let activeSessionId = '';
 const dashboardMiniCharts = {};
 
-document.addEventListener('DOMContentLoaded', async () => { loadDashboard(); loadPaymentChannels(); await initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); updateSidebarHistoryVisibility('chat'); loadChatHistory(); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); updateSidebarHistoryVisibility('chat'); loadChatHistory(); });
 
 function go(page) {
     if (page === 'listing') {
@@ -663,7 +663,7 @@ function setStatus(msg) {
 function bindListingEntryTrigger() {
     const btn = document.getElementById('chatListingEntryBtn');
     if (!btn) return;
-    btn.addEventListener('click', () => openListingModalWithGuard());
+    btn.addEventListener('click', () => openModal('listingModal'));
 }
 
 async function hydrateLocalChatsFromBackend() {
@@ -721,25 +721,49 @@ async function initLocalChats() {
         localChatSessions = [];
     }
     if (!Array.isArray(localChatSessions)) localChatSessions = [];
-    const backendSessions = await hydrateLocalChatsFromBackend();
-    if (backendSessions.length) {
-        const existingBackend = new Set(localChatSessions.map(s => s.backend_session_id).filter(Boolean));
-        backendSessions.forEach(s => { if (!existingBackend.has(s.backend_session_id)) localChatSessions.push(s); });
-    }
     if (!localChatSessions.length) {
         startNewChat();
-        return;
+    } else {
+        activeSessionId = localChatSessions[0]?.id || '';
+        if (!activeSessionId) {
+            startNewChat();
+        } else {
+            renderLocalHistoryChips();
+            restoreLocalSession(activeSessionId);
+        }
     }
-    activeSessionId = localChatSessions[0]?.id || '';
-    if (!activeSessionId) {
-        startNewChat();
-        return;
-    }
-    renderLocalHistoryChips();
-    restoreLocalSession(activeSessionId);
+    hydrateLocalChatsFromBackend().then((backendSessions) => {
+        if (!backendSessions.length) return;
+        const existingBackend = new Set(localChatSessions.map(s => s.backend_session_id).filter(Boolean));
+        backendSessions.forEach(session => {
+            if (!existingBackend.has(session.backend_session_id)) localChatSessions.push(session);
+        });
+        saveLocalChats();
+        renderLocalHistoryChips();
+    });
+    return;
+}
+
+
+function buildSessionTitle(session) {
+    if (!session) return '新聊天';
+    if (session.title && session.title !== '新聊天') return session.title;
+    const msgs = Array.isArray(session.messages) ? session.messages : [];
+    const firstUser = msgs.find(m => m.role === 'user' && String(m.content || '').trim());
+    const firstAny = msgs.find(m => String(m.content || '').trim());
+    return (firstUser?.content || firstAny?.content || '新聊天').slice(0, 18);
+}
+
+function finalizeActiveSessionBeforeSwitch() {
+    if (!activeSessionId) return;
+    const session = localChatSessions.find(s => s.id === activeSessionId);
+    if (!session) return;
+    session.title = buildSessionTitle(session);
+    session.updated_at = session.updated_at || new Date().toISOString();
 }
 
 function startNewChat() {
+    finalizeActiveSessionBeforeSwitch();
     const id = `chat_${Date.now()}`;
     const now = new Date().toISOString();
     const item = { id, title: '新聊天', created_at: now, updated_at: now, messages: [], backend_session_id: '' };
@@ -856,7 +880,9 @@ function switchChatSession(id) {
 }
 
 function saveLocalChats() {
-    localStorage.setItem('ta_chat_sessions', JSON.stringify(localChatSessions));
+    try {
+        localStorage.setItem('ta_chat_sessions', JSON.stringify(localChatSessions));
+    } catch (e) {}
 }
 
 function renameChatSession(id, event) {
@@ -888,12 +914,7 @@ function openListingModal(prefill = {}) {
 }
 
 function openListingModalWithGuard() {
-    const modal = document.getElementById('listingModal');
-    if (!modal) {
-        window.alert('商品上架弹窗未加载，请刷新页面后重试。');
-        return;
-    }
-    openListingModal();
+    openModal('listingModal');
 }
 
 async function generateListingAssets() {
