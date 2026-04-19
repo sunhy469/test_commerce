@@ -9,7 +9,7 @@ let localChatSessions = [];
 let activeSessionId = '';
 const dashboardMiniCharts = {};
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); updateSidebarHistoryVisibility('chat'); loadChatHistory(); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); loadChatHistory(); });
 
 function go(page) {
     if (page === 'listing') {
@@ -710,7 +710,7 @@ async function hydrateLocalChatsFromBackend() {
 function updateSidebarHistoryVisibility(page) {
     const section = document.getElementById('sidebarHistorySection');
     if (!section) return;
-    section.classList.toggle('hidden', page !== 'chat');
+    section.classList.remove('hidden');
 }
 
 
@@ -732,16 +732,8 @@ async function initLocalChats() {
             restoreLocalSession(activeSessionId);
         }
     }
-    hydrateLocalChatsFromBackend().then((backendSessions) => {
-        if (!backendSessions.length) return;
-        const existingBackend = new Set(localChatSessions.map(s => s.backend_session_id).filter(Boolean));
-        backendSessions.forEach(session => {
-            if (!existingBackend.has(session.backend_session_id)) localChatSessions.push(session);
-        });
-        saveLocalChats();
-        renderLocalHistoryChips();
-    });
-    return;
+    saveLocalChats();
+    renderLocalHistoryChips();
 }
 
 
