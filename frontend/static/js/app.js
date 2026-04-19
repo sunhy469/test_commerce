@@ -86,18 +86,26 @@ function loadingSkeleton(text = 'Loading...') { return `<div class="section-card
 function emptyState(title, desc) { return `<div class="section-card p-8 text-center text-sm text-[var(--muted)]"><div class="font-semibold text-[var(--text)]">${title}</div><div class="mt-2">${desc}</div></div>`; }
 function statusTag(type, text) { return `<span class="status-tag ${type}">${escapeHtml(text)}</span>`; }
 function sectionCard(title, subtitle, content) { return `<section class="section-card p-5"><div class="flex items-start justify-between mb-4"><div><h3 class="text-lg font-bold">${title}</h3><div class="text-xs text-[var(--muted)] mt-1">${subtitle || ''}</div></div></div>${content}</section>`; }
-function dashboardModuleLabel(key) { return ({ overview:'总览', orders:'订单管理', products:'商品管理', contentlive:'内容与直播', affiliate:'联盟带货', logistics:'物流履约', finance:'财务结算', health:'店铺健康', messages:'客户消息', settings:'设置' })[key] || key; }
+function dashboardModuleLabel(key) { return ({ orders:'订单管理', products:'商品管理', contentlive:'内容与直播', affiliate:'联盟带货', logistics:'物流履约', finance:'财务结算', health:'店铺健康', messages:'客户消息' })[key] || key; }
 
 
 function switchDashboardPanel(panelKey) {
     dashboardPanel = panelKey;
+    if (panelKey !== 'charts') dashboardModule = panelKey;
     loadDashboard();
 }
 
 function renderDashboardPanelTabs() {
     const tabs = [
         { key: 'charts', label: '总览图表' },
-        { key: 'module', label: '控制台模块' },
+        { key: 'orders', label: '订单管理' },
+        { key: 'products', label: '商品管理' },
+        { key: 'contentlive', label: '内容与直播' },
+        { key: 'affiliate', label: '联盟带货' },
+        { key: 'logistics', label: '物流履约' },
+        { key: 'finance', label: '财务结算' },
+        { key: 'health', label: '店铺健康' },
+        { key: 'messages', label: '客户消息' },
     ];
     return `<section class="section-card p-4"><div class="flex flex-wrap gap-2">${tabs.map(tab => `<button class="px-4 py-2 rounded-full text-sm border ${dashboardPanel === tab.key ? 'bg-[rgba(184,69,32,.1)] text-[var(--accent-strong)] border-[rgba(184,69,32,.2)]' : 'bg-white/70 border-[rgba(126,96,60,.14)]'}" onclick="switchDashboardPanel('${tab.key}')">${tab.label}</button>`).join('')}</div></section>`;
 }
@@ -113,9 +121,9 @@ function renderDashboardPage(data) {
 
     const chartBlock = `<section class="section-card p-5"><div class="flex justify-between"><div><h2 class="serif-title text-3xl font-black">Seller Center Dashboard</h2><p class="text-sm text-[var(--muted)] mt-1">经营、履约、财务、内容一体化总览</p></div>${data.state==='mock'?'<span class="status-tag warn">Mock Fallback</span>':''}</div><div class="seller-grid-kpi mt-4">${kpi}</div></section><div class="grid xl:grid-cols-3 gap-4"><section class="section-card p-5 xl:col-span-2"><h3 class="font-bold mb-3">GMV / 订单 / 买家趋势</h3><canvas id="chartTrend" height="120"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">收入构成</h3><canvas id="chartRevenueMix" height="160"></canvas></section></div><div class="grid xl:grid-cols-3 gap-4"><section class="section-card p-5"><h3 class="font-bold mb-3">流量来源</h3><canvas id="chartTraffic" height="140"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">订单状态分布</h3><canvas id="chartOrderStatus" height="140"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">店铺健康度</h3><div class="text-4xl font-black">${data.health.score}</div><div class="text-xs text-[var(--muted)] mt-2">违规率低于行业均值 ${data.health.delta}%</div></section></div><div class="grid xl:grid-cols-2 gap-4">${sectionCard('热销商品 Top10','GMV 排行',topProducts)}${sectionCard('待办与预警','订单、退款、库存、违规',todos)}</div>`;
 
-    const moduleBlock = `<section class="section-card p-5"><div class="grid lg:grid-cols-[220px_1fr] gap-4"><aside class="rounded-2xl border bg-white/70 p-3"><div class="text-xs uppercase tracking-[0.18em] text-[var(--muted)] mb-2">控制台模块</div>${['overview','orders','products','contentlive','affiliate','logistics','finance','health','messages','settings'].map(m=>`<button class="w-full text-left px-3 py-2.5 rounded-xl text-sm mb-1 ${dashboardModule===m?'bg-[rgba(184,69,32,.1)] text-[var(--accent-strong)] font-semibold':'hover:bg-white'}" onclick="switchDashboardModule('${m}')">${dashboardModuleLabel(m)}</button>`).join('')}</aside><div id="dashboardModuleRoot"></div></div></section>`;
+    const moduleBlock = `<section class="section-card p-5"><div id="dashboardModuleRoot"></div></section>`;
 
-    return `${renderFilterBar()}${renderDashboardPanelTabs()}${dashboardPanel === 'charts' ? chartBlock : ''}${dashboardPanel === 'module' ? moduleBlock : ''}`;
+    return `${renderFilterBar()}${renderDashboardPanelTabs()}${dashboardPanel === 'charts' ? chartBlock : moduleBlock}`;
 }
 
 function renderDashboardCharts(data) {
@@ -210,11 +218,7 @@ function switchDashboardModule(moduleKey) {
 }
 
 function renderDashboardModule() {
-    if (dashboardModule === 'overview') {
-        const root = document.getElementById('dashboardModuleRoot');
-        if (root) root.innerHTML = emptyState('请选择经营模块', '在当前控制台内切换订单、商品、内容、物流、财务等模块。');
-        return;
-    }
+    if (dashboardPanel === 'charts') return;
     if (dashboardModule === 'orders') return loadOrdersPage();
     if (dashboardModule === 'products') return loadProductsPage();
     if (dashboardModule === 'contentlive') return loadContentLivePage();
@@ -223,7 +227,8 @@ function renderDashboardModule() {
     if (dashboardModule === 'finance') return loadFinancePage();
     if (dashboardModule === 'health') return loadHealthPage();
     if (dashboardModule === 'messages') return loadMessagesPage();
-    if (dashboardModule === 'settings') return loadSettingsPage();
+    const root = document.getElementById('dashboardModuleRoot');
+    if (root) root.innerHTML = emptyState('请选择模块', '请从上方导航选择订单、商品、内容、物流、财务等模块。');
 }
 
 function setChatScene(scene) {
