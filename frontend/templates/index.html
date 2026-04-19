@@ -84,9 +84,9 @@
             <button onclick="go('supply')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="supply"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M3 7h12v10H3z"/><path d="M15 10h3l3 3v4h-6z"/><circle cx="7" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg></span>供应链</button>
             <button onclick="go('purchase')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="purchase"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M4 6h2l2 10h10l2-7H7"/><circle cx="10" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg></span>采购管理</button>
         </div>
-        <div id="sidebarHistorySection" class="sidebar-history-panel px-3 py-4 flex-1 overflow-hidden">
+        <div id="sidebarHistorySection" class="sidebar-history-panel px-3 py-4 flex-1 overflow-hidden flex flex-col">
             <div class="text-sm font-bold text-[var(--muted)] px-2 mb-3">历史对话</div>
-            <div id="sidebarChatHistory" class="space-y-2 overflow-y-auto pr-1 max-h-[calc(100vh-300px)]"></div>
+            <div id="sidebarChatHistory" class="space-y-2 overflow-y-auto pr-1 flex-1 min-h-0"></div>
         </div>
     </aside>
     <main class="main-area">
