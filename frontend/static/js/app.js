@@ -714,7 +714,7 @@ function updateSidebarHistoryVisibility(page) {
 }
 
 
-function initLocalChats() {
+async function initLocalChats() {
     try {
         localChatSessions = JSON.parse(localStorage.getItem('ta_chat_sessions') || '[]');
     } catch (e) {
