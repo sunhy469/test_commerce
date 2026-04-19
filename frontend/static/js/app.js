@@ -9,7 +9,7 @@ let localChatSessions = [];
 let activeSessionId = '';
 const dashboardMiniCharts = {};
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); updateSidebarHistoryVisibility('chat'); loadChatHistory(); });
+document.addEventListener('DOMContentLoaded', async () => { loadDashboard(); loadPaymentChannels(); await initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); updateSidebarHistoryVisibility('chat'); loadChatHistory(); });
 
 function go(page) {
     if (page === 'listing') {
@@ -659,6 +659,54 @@ function setStatus(msg) {
     }, 2500);
 }
 
+
+function bindListingEntryTrigger() {
+    const btn = document.getElementById('chatListingEntryBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => openListingModalWithGuard());
+}
+
+async function hydrateLocalChatsFromBackend() {
+    try {
+        const res = await fetch(API + '/api/chat/history?limit=200');
+        if (!res.ok) return [];
+        const data = await res.json();
+        const messages = Array.isArray(data.messages) ? data.messages : [];
+        const groups = new Map();
+        for (const row of messages) {
+            const sid = (row.session_id || '').trim();
+            if (!sid) continue;
+            if (!groups.has(sid)) {
+                groups.set(sid, {
+                    id: `chat_backend_${sid}`,
+                    title: '历史会话',
+                    created_at: row.created_at || new Date().toISOString(),
+                    updated_at: row.created_at || new Date().toISOString(),
+                    messages: [],
+                    backend_session_id: sid,
+                    source: 'backend',
+                });
+            }
+            const session = groups.get(sid);
+            session.messages.push({
+                role: row.role === 'assistant' ? 'assistant' : 'user',
+                content: row.content || '',
+                ts: Date.parse(row.created_at || '') || Date.now(),
+            });
+            const created = row.created_at || session.created_at;
+            if (!session.created_at || created < session.created_at) session.created_at = created;
+            if (!session.updated_at || created > session.updated_at) session.updated_at = created;
+        }
+        for (const session of groups.values()) {
+            const firstUser = session.messages.find(m => m.role === 'user' && m.content);
+            session.title = (firstUser?.content || session.messages[0]?.content || '历史会话').slice(0, 18);
+        }
+        return [...groups.values()].sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    } catch (e) {
+        return [];
+    }
+}
+
 function updateSidebarHistoryVisibility(page) {
     const section = document.getElementById('sidebarHistorySection');
     if (!section) return;
@@ -666,14 +714,19 @@ function updateSidebarHistoryVisibility(page) {
 }
 
 
-function initLocalChats() {
+async function initLocalChats() {
     try {
         localChatSessions = JSON.parse(localStorage.getItem('ta_chat_sessions') || '[]');
     } catch (e) {
         localChatSessions = [];
     }
-    if (!Array.isArray(localChatSessions) || !localChatSessions.length) {
-        localChatSessions = [];
+    if (!Array.isArray(localChatSessions)) localChatSessions = [];
+    const backendSessions = await hydrateLocalChatsFromBackend();
+    if (backendSessions.length) {
+        const existingBackend = new Set(localChatSessions.map(s => s.backend_session_id).filter(Boolean));
+        backendSessions.forEach(s => { if (!existingBackend.has(s.backend_session_id)) localChatSessions.push(s); });
+    }
+    if (!localChatSessions.length) {
         startNewChat();
         return;
     }
@@ -688,7 +741,8 @@ function initLocalChats() {
 
 function startNewChat() {
     const id = `chat_${Date.now()}`;
-    const item = { id, title: '新聊天', created_at: new Date().toISOString(), messages: [], backend_session_id: '' };
+    const now = new Date().toISOString();
+    const item = { id, title: '新聊天', created_at: now, updated_at: now, messages: [], backend_session_id: '' };
     localChatSessions.unshift(item);
     localChatSessions = localChatSessions.slice(0, 20);
     activeSessionId = id;
@@ -706,6 +760,7 @@ function persistChatMessage(role, content) {
     const session = localChatSessions.find(s => s.id === activeSessionId);
     if (!session) return;
     session.messages.push({ role, content, ts: Date.now() });
+    session.updated_at = new Date().toISOString();
     if (role === 'assistant' && session.id !== activeSessionId) session.unread = (session.unread || 0) + 1;
     if (session.title === '新聊天' && role === 'user') {
         session.title = content.slice(0, 18) || '新聊天';
@@ -733,13 +788,14 @@ function renderLocalHistoryChips() {
     const el = document.getElementById('sidebarChatHistory');
     if (!el) return;
     if (!localChatSessions.length && activeSessionId) {
-        localChatSessions = [{ id: activeSessionId, title: '新聊天', created_at: new Date().toISOString(), messages: [], backend_session_id: '' }];
+        const now = new Date().toISOString();
+        localChatSessions = [{ id: activeSessionId, title: '新聊天', created_at: now, updated_at: now, messages: [], backend_session_id: '' }];
     }
     if (!localChatSessions.length) {
         el.innerHTML = '<span class="text-[var(--muted)] text-xs px-2">暂无历史会话</span>';
         return;
     }
-    const sorted = [...localChatSessions].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    const sorted = [...localChatSessions].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
     el.innerHTML = sorted.slice(0, 20).map(s => `
         <div class="chat-history-row ${s.id===activeSessionId ? 'active' : ''}">
             <button onclick="switchChatSession('${s.id}')" class="w-full text-left px-3 pt-2.5 pb-2">
