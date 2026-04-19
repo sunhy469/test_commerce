@@ -57,7 +57,7 @@
         .chat-history-row { position:relative; border:1px solid rgba(126,96,60,.12); border-radius:14px; background:rgba(255,255,255,.66); transition:all .2s ease; overflow:visible; }
         .chat-history-row:hover { background:rgba(255,255,255,.9); box-shadow:0 10px 22px rgba(53,38,23,.08); }
         .chat-history-row.active { border-color:rgba(184,69,32,.3); background:rgba(184,69,32,.08); }
-        .history-actions-pop { position:absolute; right:10px; top:8px; display:flex; gap:6px; padding:6px; border-radius:10px; background:rgba(255,255,255,.98); border:1px solid rgba(126,96,60,.18); box-shadow:0 10px 20px rgba(53,38,23,.12); opacity:0; pointer-events:none; transform:translateY(-4px); transition:all .18s ease; z-index:12; }
+        .history-actions-pop { position:absolute; right:8px; top:calc(100% + 6px); display:flex; gap:6px; padding:6px; border-radius:10px; background:rgba(255,255,255,.98); border:1px solid rgba(126,96,60,.18); box-shadow:0 10px 20px rgba(53,38,23,.12); opacity:0; pointer-events:none; transform:translateY(-4px); transition:all .18s ease; z-index:20; }
         .chat-history-row:hover .history-actions-pop { opacity:1; pointer-events:auto; transform:translateY(0); }
 
         #quickToolsMenu button { transition: all .2s ease; }
