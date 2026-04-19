@@ -9,7 +9,7 @@ let localChatSessions = [];
 let activeSessionId = '';
 const dashboardMiniCharts = {};
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); updateSidebarHistoryVisibility('chat'); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); updateSidebarHistoryVisibility('chat'); loadChatHistory(); });
 
 function go(page) {
     if (page === 'listing') {
@@ -732,6 +732,9 @@ function restoreLocalSession(sessionId) {
 function renderLocalHistoryChips() {
     const el = document.getElementById('sidebarChatHistory');
     if (!el) return;
+    if (!localChatSessions.length && activeSessionId) {
+        localChatSessions = [{ id: activeSessionId, title: '新聊天', created_at: new Date().toISOString(), messages: [], backend_session_id: '' }];
+    }
     if (!localChatSessions.length) {
         el.innerHTML = '<span class="text-[var(--muted)] text-xs px-2">暂无历史会话</span>';
         return;
@@ -826,6 +829,15 @@ function openListingModal(prefill = {}) {
     if (prefill.price !== undefined) document.getElementById('listingPrice').value = prefill.price;
     if (prefill.category) document.getElementById('listingCategory').value = prefill.category;
     if (prefill.country && document.getElementById('listingCountry')) document.getElementById('listingCountry').value = prefill.country;
+}
+
+function openListingModalWithGuard() {
+    const modal = document.getElementById('listingModal');
+    if (!modal) {
+        window.alert('商品上架弹窗未加载，请刷新页面后重试。');
+        return;
+    }
+    openListingModal();
 }
 
 async function generateListingAssets() {

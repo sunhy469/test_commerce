@@ -71,7 +71,7 @@
 <body>
 <div class="app-shell">
     <aside class="sidebar glass flex flex-col">
-        <div class="px-4 py-5 border-b border-[rgba(126,96,60,.12)]">
+        <div class="h-[61px] px-4 flex items-center border-b border-[rgba(126,96,60,.12)]">
             <div class="flex items-center gap-3">
                 <img src="/static/images/logo.svg" alt="TradeAgent Studio Logo" class="w-10 h-10 rounded-xl object-cover bg-white/80 border border-[rgba(126,96,60,.15)]">
                 <div class="serif-title text-xl font-black text-[var(--accent-strong)]">TradeAgent</div>
@@ -147,7 +147,7 @@
                             <button onclick="bindQuickAction('upload')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">上传本地文件（支持图片）</button>
                         </div>
                     </div>
-                    <button onclick="openListingModal()" class="action-btn text-sm px-4">商品上架</button>
+                    <button onclick="openListingModalWithGuard()" class="action-btn text-sm px-4">商品上架</button>
                     <div class="flex items-center gap-2">
                         <button onclick="prepareChat()" class="px-5 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">发送</button>
                     </div>
