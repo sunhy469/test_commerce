@@ -745,6 +745,31 @@ async function initLocalChats() {
 }
 
 
+
+function snapshotActiveSessionFromUI() {
+    if (!activeSessionId) return;
+    const session = localChatSessions.find(s => s.id === activeSessionId);
+    const box = document.getElementById('chatMessages');
+    if (!session || !box) return;
+    if (Array.isArray(session.messages) && session.messages.length) return;
+
+    const rows = [...box.querySelectorAll('div.flex')];
+    const parsed = [];
+    rows.forEach(row => {
+        const bubble = row.querySelector('.bubble-user, .bubble-ai');
+        if (!bubble) return;
+        const role = bubble.classList.contains('bubble-user') ? 'user' : 'assistant';
+        const text = bubble.innerText?.trim();
+        if (!text) return;
+        parsed.push({ role, content: text, ts: Date.now() });
+    });
+    if (parsed.length) {
+        session.messages = parsed;
+        session.title = buildSessionTitle(session);
+        session.updated_at = new Date().toISOString();
+    }
+}
+
 function buildSessionTitle(session) {
     if (!session) return '新聊天';
     if (session.title && session.title !== '新聊天') return session.title;
@@ -763,6 +788,7 @@ function finalizeActiveSessionBeforeSwitch() {
 }
 
 function startNewChat() {
+    snapshotActiveSessionFromUI();
     finalizeActiveSessionBeforeSwitch();
     const id = `chat_${Date.now()}`;
     const now = new Date().toISOString();

@@ -92,7 +92,7 @@
     <main class="main-area">
         <header class="sticky top-0 z-40 border-b bg-[rgba(250,245,237,.85)] backdrop-blur-xl">
             <div class="px-4 py-3 flex items-center justify-between gap-4">
-                <div><button onclick="startNewChat()" class="px-3 py-2 rounded-full soft-card text-sm">+ 新聊天</button></div>
+                <div><button type="button" onclick="startNewChat()" class="px-3 py-2 rounded-full soft-card text-sm">+ 新聊天</button></div>
                 <div class="flex items-center gap-3">
                     <button onclick="openModal('userModal')" class="px-3 py-2 rounded-full glass text-sm">用户中心</button>
                 </div>
@@ -129,7 +129,7 @@
 
 <!-- ==================== 2. AI对话 ==================== -->
 <div id="page-chat" class="page active">
-    <div class="w-full p-4 md:p-10">
+    <div class="w-full p-4 md:px-10 md:pt-14 md:pb-10">
         <section class="glass rounded-[32px] p-6 md:p-8 h-[calc(100vh-170px)] max-h-[calc(100vh-170px)] flex flex-col overflow-hidden">
             <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
                 <div class="text-center text-[var(--muted)] py-24">
