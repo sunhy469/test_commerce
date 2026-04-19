@@ -64,6 +64,18 @@
         #page-chat .bubble-user, #page-chat .bubble-ai { font-size:14px; }
         .chat-composer { position: sticky; bottom: 0; z-index: 5; }
         @media (max-width: 1024px) { .app-shell { grid-template-columns:1fr; } .sidebar { position:relative; height:auto; border-right:0; border-bottom:1px solid var(--line);} }
+
+        .section-card { border-radius:20px; border:1px solid rgba(126,96,60,.14); background:rgba(255,255,255,.88); box-shadow:0 8px 22px rgba(53,38,23,.06); }
+        .seller-grid-kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+        .status-tag { padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+        .status-tag.success { background:#e7f7ef; color:#137a4b; }
+        .status-tag.warn { background:#fff4e5; color:#a66306; }
+        .status-tag.danger { background:#fde8e8; color:#b42318; }
+        .status-tag.info { background:#eaf2ff; color:#1d4ed8; }
+        .data-table { width:100%; border-collapse:collapse; font-size:12px; }
+        .data-table th,.data-table td { padding:10px; border-bottom:1px solid rgba(126,96,60,.12); text-align:left; vertical-align:top; }
+        .data-table th { color:var(--muted); font-weight:700; white-space:nowrap; }
+        .row-expand { background:rgba(246,241,231,.6); }
         ::-webkit-scrollbar { width:6px; }
         ::-webkit-scrollbar-thumb { background:rgba(126,96,60,.22); border-radius:999px; }
     </style>
@@ -99,33 +111,11 @@
             </div>
         </header>
 
-<!-- ==================== 1. 总览仪表盘 ==================== -->
+<!-- ==================== 1. Seller Center 控制台 ==================== -->
 <div id="page-dashboard" class="page">
-    <div class="w-full p-4 md:p-6 space-y-5">
-        <section class="glass rounded-[28px] p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="serif-title text-3xl font-black">店铺数据总览</h2>
-                <span class="text-xs text-[var(--muted)]">核心指标汇总</span>
-            </div>
-            <div id="dashStatsCharts" class="grid md:grid-cols-2 gap-4">
-                <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm">📦 监控商品总数 <span id="statProducts" class="ml-2 text-[var(--accent-strong)]">0</span></div></div>
-                <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm">🧪 选品分析次数 <span id="statAnalyses" class="ml-2 text-emerald-700">0</span></div></div>
-                <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm">🤝 供应链匹配 <span id="statSuppliers" class="ml-2 text-amber-700">0</span></div></div>
-                <div class="soft-card rounded-[22px] p-4"><div class="font-bold text-sm">🎨 内容生成记录 <span id="statContents" class="ml-2 text-violet-700">0</span></div></div>
-            </div>
-        </section>
-
-        <section class="glass rounded-[28px] p-6">
-            <h3 class="serif-title text-2xl font-black mb-4">店铺运营数据</h3>
-            <div id="storeMetrics" class="grid md:grid-cols-4 gap-4">
-                <div class="soft-card rounded-[20px] p-4"><div class="text-xs text-[var(--muted)]">已绑定店铺</div><div id="storeCount" class="text-2xl font-black mt-2">0</div></div>
-                <div class="soft-card rounded-[20px] p-4"><div class="text-xs text-[var(--muted)]">活跃国家站点</div><div id="storeCountries" class="text-2xl font-black mt-2">0</div></div>
-                <div class="soft-card rounded-[20px] p-4"><div class="text-xs text-[var(--muted)]">收藏商品数</div><div id="favCount" class="text-2xl font-black mt-2">0</div></div>
-                <div class="soft-card rounded-[20px] p-4"><div class="text-xs text-[var(--muted)]">近7天操作数</div><div id="ops7d" class="text-2xl font-black mt-2">0</div></div>
-            </div>
-        </section>
-    </div>
+    <div class="w-full p-4 md:p-6 space-y-5" id="sellerDashboardRoot"></div>
 </div>
+
 
 <!-- ==================== 2. AI对话 ==================== -->
 <div id="page-chat" class="page active">
