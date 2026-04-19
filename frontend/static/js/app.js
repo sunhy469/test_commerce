@@ -10,7 +10,7 @@ let activeSessionId = '';
 const dashboardMiniCharts = {};
 let dashboardModule = 'overview';
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); initSellerCenterPages(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); loadChatHistory(); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); loadChatHistory(); updateSidebarHistoryVisibility('chat'); });
 
 function go(page) {
     if (page === 'listing') {
@@ -845,7 +845,8 @@ async function hydrateLocalChatsFromBackend() {
 function updateSidebarHistoryVisibility(page) {
     const section = document.getElementById('sidebarHistorySection');
     if (!section) return;
-    section.classList.toggle('hidden', page !== 'chat');
+    section.classList.remove('hidden');
+    section.classList.add('flex');
 }
 
 
