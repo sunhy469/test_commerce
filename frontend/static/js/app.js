@@ -9,9 +9,13 @@ let localChatSessions = [];
 let activeSessionId = '';
 const dashboardMiniCharts = {};
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); updateSidebarHistoryVisibility('chat'); });
 
 function go(page) {
+    if (page === 'listing') {
+        openListingModal();
+        return;
+    }
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('page-' + page).classList.add('active');
@@ -21,6 +25,7 @@ function go(page) {
     if (page === 'ranking') loadRanking();
     if (page === 'chat') loadChatHistory();
     if (page === 'purchase') loadOrders();
+    updateSidebarHistoryVisibility(page);
 }
 
 async function loadDashboard() {
@@ -343,6 +348,17 @@ async function loadChatHistory() {
     if (modeLabel) modeLabel.textContent = sceneLabel(chatScene);
 }
 
+function bindChatInputShortcuts() {
+    const input = document.getElementById('chatInput');
+    if (!input) return;
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            prepareChat();
+        }
+    });
+}
+
 // === Ranking ===
 function setFilter(type, val) {
     if (type === 'country') {
@@ -402,19 +418,7 @@ async function loadRanking() {
 function esc(s) { return (s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
 function fillContent(type, title, price, category = '', country = '') {
-    go('content');
-    if (type === 'detail') {
-        setContentTab('detail');
-        document.getElementById('dpTitle').value = title;
-        document.getElementById('dpPrice').value = price;
-        document.getElementById('dpCategory').value = category;
-        if (country && document.getElementById('dpCountry')) document.getElementById('dpCountry').value = country;
-    } else {
-        setContentTab('image');
-        document.getElementById('imTitle').value = title;
-        document.getElementById('imCategory').value = category;
-        if (country && document.getElementById('imCountry')) document.getElementById('imCountry').value = country;
-    }
+    openListingModal({ title, price, category, country, focus: type });
 }
 
 function bindFromRanking(title, country) {
@@ -655,6 +659,12 @@ function setStatus(msg) {
     }, 2500);
 }
 
+function updateSidebarHistoryVisibility(page) {
+    const section = document.getElementById('sidebarHistorySection');
+    if (!section) return;
+    section.classList.toggle('hidden', page !== 'chat');
+}
+
 
 function initLocalChats() {
     try {
@@ -662,11 +672,16 @@ function initLocalChats() {
     } catch (e) {
         localChatSessions = [];
     }
-    if (!localChatSessions.length) {
+    if (!Array.isArray(localChatSessions) || !localChatSessions.length) {
+        localChatSessions = [];
         startNewChat();
         return;
     }
-    activeSessionId = localChatSessions[0].id;
+    activeSessionId = localChatSessions[0]?.id || '';
+    if (!activeSessionId) {
+        startNewChat();
+        return;
+    }
     renderLocalHistoryChips();
     restoreLocalSession(activeSessionId);
 }
@@ -691,6 +706,7 @@ function persistChatMessage(role, content) {
     const session = localChatSessions.find(s => s.id === activeSessionId);
     if (!session) return;
     session.messages.push({ role, content, ts: Date.now() });
+    if (role === 'assistant' && session.id !== activeSessionId) session.unread = (session.unread || 0) + 1;
     if (session.title === '新聊天' && role === 'user') {
         session.title = content.slice(0, 18) || '新聊天';
     }
@@ -701,6 +717,7 @@ function persistChatMessage(role, content) {
 function restoreLocalSession(sessionId) {
     const session = localChatSessions.find(s => s.id === sessionId);
     if (!session) return;
+    session.unread = 0;
     chatSession = session.backend_session_id || '';
     const box = document.getElementById('chatMessages');
     if (!box) return;
@@ -713,18 +730,35 @@ function restoreLocalSession(sessionId) {
 }
 
 function renderLocalHistoryChips() {
-    const el = document.getElementById('chatHistoryList');
+    const el = document.getElementById('sidebarChatHistory');
     if (!el) return;
     if (!localChatSessions.length) {
-        el.innerHTML = '<span class="text-[var(--muted)]">暂无历史会话</span>';
+        el.innerHTML = '<span class="text-[var(--muted)] text-xs px-2">暂无历史会话</span>';
         return;
     }
-    el.innerHTML = localChatSessions.slice(0, 8).map(s => `
-        <div class="chat-history-item inline-flex items-center rounded-full border bg-white/70 ${s.id===activeSessionId ? 'active' : ''}"> 
-            <button onclick="switchChatSession('${s.id}')" class="px-3 py-1.5 text-xs">${escapeHtml(s.title)}</button>
-            <button onclick="deleteChatSession('${s.id}', event)" class="px-2 py-1.5 text-xs text-[var(--muted)] hover:text-[var(--accent-strong)]" title="删除会话">×</button>
+    const sorted = [...localChatSessions].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    el.innerHTML = sorted.slice(0, 20).map(s => `
+        <div class="chat-history-row ${s.id===activeSessionId ? 'active' : ''}">
+            <button onclick="switchChatSession('${s.id}')" class="w-full text-left px-3 pt-2.5 pb-2">
+                <div class="flex items-center gap-2">
+                    <div class="truncate text-xs font-semibold flex-1" title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</div>
+                    ${s.unread ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white">${s.unread}</span>` : ''}
+                </div>
+                <div class="text-[10px] text-[var(--muted)] mt-1">${formatSessionTime(s.created_at)}</div>
+            </button>
+            <div class="history-actions flex items-center gap-1 px-2 pb-2">
+                <button onclick="renameChatSession('${s.id}', event)" class="px-2 py-1 text-[10px] rounded-lg bg-white border">重命名</button>
+                <button onclick="togglePinSession('${s.id}', event)" class="px-2 py-1 text-[10px] rounded-lg bg-white border">${s.pinned ? '取消置顶' : '置顶'}</button>
+                <button onclick="deleteChatSession('${s.id}', event)" class="px-2 py-1 text-[10px] rounded-lg bg-white border text-[var(--accent-strong)]">删除</button>
+            </div>
         </div>
     `).join('');
+}
+
+function formatSessionTime(isoTime) {
+    const d = new Date(isoTime || Date.now());
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 async function deleteChatSession(id, event) {
@@ -764,6 +798,69 @@ function switchChatSession(id) {
 
 function saveLocalChats() {
     localStorage.setItem('ta_chat_sessions', JSON.stringify(localChatSessions));
+}
+
+function renameChatSession(id, event) {
+    if (event) event.stopPropagation();
+    const session = localChatSessions.find(s => s.id === id);
+    if (!session) return;
+    const next = window.prompt('重命名会话', session.title || '');
+    if (!next || !next.trim()) return;
+    session.title = next.trim().slice(0, 50);
+    saveLocalChats();
+    renderLocalHistoryChips();
+}
+
+function togglePinSession(id, event) {
+    if (event) event.stopPropagation();
+    const session = localChatSessions.find(s => s.id === id);
+    if (!session) return;
+    session.pinned = !session.pinned;
+    saveLocalChats();
+    renderLocalHistoryChips();
+}
+
+function openListingModal(prefill = {}) {
+    openModal('listingModal');
+    if (prefill.title) document.getElementById('listingTitle').value = prefill.title;
+    if (prefill.price !== undefined) document.getElementById('listingPrice').value = prefill.price;
+    if (prefill.category) document.getElementById('listingCategory').value = prefill.category;
+    if (prefill.country && document.getElementById('listingCountry')) document.getElementById('listingCountry').value = prefill.country;
+}
+
+async function generateListingAssets() {
+    const out = document.getElementById('listingOut');
+    const title = document.getElementById('listingTitle').value.trim();
+    if (!title) {
+        out.innerHTML = '<div class="text-red-500">请先填写商品标题。</div>';
+        return;
+    }
+    out.innerHTML = '<div class="text-[var(--accent-strong)] text-sm">正在生成详情页与商品图，请稍候...</div>';
+
+    const product = {
+        title,
+        price: parseFloat(document.getElementById('listingPrice').value) || 9.99,
+        category: document.getElementById('listingCategory').value,
+        description: document.getElementById('listingPrompt').value,
+    };
+    const country = document.getElementById('listingCountry').value;
+    try {
+        const [detailRes, imageRes] = await Promise.all([
+            fetch(API + '/api/content/detail-page', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product, country }) }),
+            fetch(API + '/api/content/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: { ...product, _image_provider: document.getElementById('listingProvider').value, _image_model: document.getElementById('listingModel').value, _aspect_ratio: document.getElementById('listingAspect').value }, style: document.getElementById('listingStyle').value, prompt: `${product.description || ''}；目标国家：${country}` }) })
+        ]);
+        const detail = await detailRes.json();
+        const image = await imageRes.json();
+        const detailTitle = detail.page?.page_title || '详情页已生成';
+        const preview = detail.html_page?.preview_url ? `<a href="${detail.html_page.preview_url}" target="_blank" class="underline text-[var(--accent-strong)]">详情页预览</a>` : '无详情页预览链接';
+        const imgPreview = image.preview_url ? `<a href="${image.preview_url}" target="_blank" class="underline text-[var(--forest)]">图片预览</a>` : '无图片预览链接';
+        out.innerHTML = `<div class="space-y-3"><div class="text-lg font-semibold">${escapeHtml(title)}</div><div class="rounded-2xl border bg-white/80 p-3"><div class="font-semibold">商品详情页</div><div class="text-xs text-[var(--muted)] mt-1">${escapeHtml(detailTitle)}</div><div class="text-xs mt-2">${preview}</div></div><div class="rounded-2xl border bg-white/80 p-3"><div class="font-semibold">商品图</div><div class="text-xs text-[var(--muted)] mt-1">${escapeHtml(image.message || image.job_id || '图像任务已提交')}</div><div class="text-xs mt-2">${imgPreview}</div></div></div>`;
+        addMsg('ai', `「${title}」商品上架内容已生成：详情页与商品图已准备完成。`);
+        persistChatMessage('assistant', `「${title}」商品上架内容已生成`);
+        go('chat');
+    } catch (e) {
+        out.innerHTML = `<div class="text-red-500 text-sm">生成失败：${escapeHtml(e.message)}</div>`;
+    }
 }
 
 async function loadSkills() {
