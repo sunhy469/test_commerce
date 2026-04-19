@@ -8,8 +8,9 @@ let chatTaskItems = [];
 let localChatSessions = [];
 let activeSessionId = '';
 const dashboardMiniCharts = {};
+let dashboardModule = 'overview';
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); loadChatHistory(); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); loadChatHistory(); updateSidebarHistoryVisibility('chat'); });
 
 function go(page) {
     if (page === 'listing') {
@@ -18,7 +19,9 @@ function go(page) {
     }
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('page-' + page).classList.add('active');
+    const targetPage = document.getElementById('page-' + page);
+    if (!targetPage) return;
+    targetPage.classList.add('active');
     const nav = document.querySelector(`[data-page="${page}"]`);
     if (nav) nav.classList.add('active');
     if (page === 'dashboard') loadDashboard();
@@ -29,28 +32,25 @@ function go(page) {
 }
 
 async function loadDashboard() {
+    const root = document.getElementById('sellerDashboardRoot');
+    if (!root) return;
+    root.innerHTML = loadingSkeleton('Dashboard 数据加载中...');
+    let data = buildMockSellerData();
     try {
-        const [stats, acts, favs, stores] = await Promise.all([
+        const [stats, acts, favs, stores, orders] = await Promise.all([
             fetch(API + '/api/history/stats').then(r => r.json()),
-            fetch(API + '/api/history/activities?limit=50').then(r => r.json()),
+            fetch(API + '/api/history/activities?limit=80').then(r => r.json()),
             fetch(API + '/api/history/favorites?limit=100').then(r => r.json()),
             fetch(API + '/api/user/store-bindings').then(r => r.json()),
+            fetch(API + '/api/purchase/orders').then(r => r.json()),
         ]);
+        data = mapSellerData({ stats, acts, favs, stores, orders });
+    } catch (e) {
+        data.state = 'mock';
+    }
 
-        document.getElementById('statProducts').textContent = stats.products || 0;
-        document.getElementById('statAnalyses').textContent = stats.analyses || 0;
-        document.getElementById('statSuppliers').textContent = stats.supplier_matches || 0;
-        document.getElementById('statContents').textContent = stats.content_records || 0;
-
-        const trend = build7DayTrend(acts.activities || []);
-
-        const storeList = stores.stores || [];
-        const countries = new Set(storeList.map(s => s.country).filter(Boolean));
-        document.getElementById('storeCount').textContent = storeList.length;
-        document.getElementById('storeCountries').textContent = countries.size;
-        document.getElementById('favCount').textContent = (favs.favorites || []).length;
-        document.getElementById('ops7d').textContent = trend.values.reduce((a, b) => a + b, 0);
-    } catch (e) {}
+    root.innerHTML = renderDashboardPage(data);
+    renderDashboardCharts(data);
 }
 
 function build7DayTrend(activities) {
@@ -69,6 +69,131 @@ function build7DayTrend(activities) {
         if (counts.has(key)) counts.set(key, (counts.get(key) || 0) + 1);
     }
     return { dates: days, values: [...counts.values()] };
+}
+
+
+function loadingSkeleton(text = 'Loading...') { return `<div class="section-card p-6 text-sm text-[var(--muted)]">${text}</div>`; }
+function emptyState(title, desc) { return `<div class="section-card p-8 text-center text-sm text-[var(--muted)]"><div class="font-semibold text-[var(--text)]">${title}</div><div class="mt-2">${desc}</div></div>`; }
+function statusTag(type, text) { return `<span class="status-tag ${type}">${escapeHtml(text)}</span>`; }
+function sectionCard(title, subtitle, content) { return `<section class="section-card p-5"><div class="flex items-start justify-between mb-4"><div><h3 class="text-lg font-bold">${title}</h3><div class="text-xs text-[var(--muted)] mt-1">${subtitle || ''}</div></div></div>${content}</section>`; }
+function dashboardModuleLabel(key) { return ({ overview:'总览', orders:'订单管理', products:'商品管理', contentlive:'内容与直播', affiliate:'联盟带货', logistics:'物流履约', finance:'财务结算', health:'店铺健康', messages:'客户消息', settings:'设置' })[key] || key; }
+
+function renderFilterBar() {
+    return `<section class="section-card p-4"><div class="flex flex-wrap items-center gap-2 text-sm"><select class="rounded-xl border px-3 py-2 bg-white" id="dashTimeRange"><option>今日</option><option selected>近7天</option><option>近30天</option><option>自定义</option></select><select class="rounded-xl border px-3 py-2 bg-white"><option>全部店铺</option><option>TradeAgent US</option><option>TradeAgent SEA</option></select><select class="rounded-xl border px-3 py-2 bg-white"><option>Global</option><option>US</option><option>UK</option><option>ID</option></select><button class="action-btn" onclick="loadDashboard()">刷新数据</button><button class="action-btn">导出报表</button><div class="ml-auto text-xs text-[var(--muted)]">Seller Center · 经营驾驶舱</div></div></section>`;
+}
+
+function renderDashboardPage(data) {
+    const kpi = data.kpi.map(item => `<div class="soft-card p-4 rounded-2xl"><div class="text-xs text-[var(--muted)]">${item.name}</div><div class="text-2xl font-black mt-2">${item.value}</div><div class="flex justify-between items-center mt-2"><span class="text-xs ${item.trend >= 0 ? 'text-emerald-700' : 'text-red-600'}">${item.trend >= 0 ? '↑' : '↓'} ${Math.abs(item.trend)}%</span><canvas id="spark_${item.key}" height="32"></canvas></div></div>`).join('');
+    const todos = data.todos.map(t => `<div class="flex items-center justify-between border-b border-[rgba(126,96,60,.1)] py-2"><span class="text-sm">${t.name}</span><span class="font-semibold">${t.value}</span></div>`).join('');
+    const topProducts = data.topProducts.map((p,i) => `<div class="flex items-center justify-between py-2 border-b border-[rgba(126,96,60,.1)]"><span>${i+1}. ${p.name}</span><span class="text-[var(--accent-strong)]">${p.gmv}</span></div>`).join('');
+    return `${renderFilterBar()}<section class="section-card p-5"><div class="flex justify-between"><div><h2 class="serif-title text-3xl font-black">Seller Center Dashboard</h2><p class="text-sm text-[var(--muted)] mt-1">经营、履约、财务、内容一体化总览</p></div>${data.state==='mock'?'<span class="status-tag warn">Mock Fallback</span>':''}</div><div class="seller-grid-kpi mt-4">${kpi}</div></section><div class="grid xl:grid-cols-3 gap-4"><section class="section-card p-5 xl:col-span-2"><h3 class="font-bold mb-3">GMV / 订单 / 买家趋势</h3><canvas id="chartTrend" height="120"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">收入构成</h3><canvas id="chartRevenueMix" height="160"></canvas></section></div><div class="grid xl:grid-cols-3 gap-4"><section class="section-card p-5"><h3 class="font-bold mb-3">流量来源</h3><canvas id="chartTraffic" height="140"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">订单状态分布</h3><canvas id="chartOrderStatus" height="140"></canvas></section><section class="section-card p-5"><h3 class="font-bold mb-3">店铺健康度</h3><div class="text-4xl font-black">${data.health.score}</div><div class="text-xs text-[var(--muted)] mt-2">违规率低于行业均值 ${data.health.delta}%</div></section></div><div class="grid xl:grid-cols-2 gap-4">${sectionCard('热销商品 Top10','GMV 排行',topProducts)}${sectionCard('待办与预警','订单、退款、库存、违规',todos)}</div>`;
+}
+
+function renderDashboardCharts(data) {
+    renderTrendChart('chartTrend', data.trendLabels, [
+        { label: 'GMV', data: data.trendGmv, borderColor: '#b84520' },
+        { label: '订单数', data: data.trendOrders, borderColor: '#2f5d50' },
+        { label: '买家数', data: data.trendBuyers, borderColor: '#3b82f6' },
+    ]);
+    renderPieChart('chartRevenueMix', data.revenueMix);
+    renderBarChart('chartTraffic', data.trafficSources);
+    renderDoughnut('chartOrderStatus', data.orderStates);
+    data.kpi.forEach(item => renderSparkline(`spark_${item.key}`, item.spark));
+}
+
+function renderTrendChart(id, labels, datasets) {
+    const el = document.getElementById(id); if (!el) return;
+    new Chart(el, { type: 'line', data: { labels, datasets: datasets.map(d => ({ ...d, fill: false, tension: .3 })) }, options: { responsive: true, plugins: { legend: { display: true } } } });
+}
+function renderPieChart(id, data) { const el = document.getElementById(id); if (!el) return; new Chart(el, { type: 'doughnut', data: { labels: data.map(i=>i.name), datasets: [{ data: data.map(i=>i.value), backgroundColor:['#b84520','#2f5d50','#8b5cf6','#f59e0b'] }] } }); }
+function renderBarChart(id, data) { const el = document.getElementById(id); if (!el) return; new Chart(el, { type: 'bar', data: { labels: data.map(i=>i.name), datasets: [{ data: data.map(i=>i.value), backgroundColor:'#2f5d50' }] } }); }
+function renderDoughnut(id, data) { const el = document.getElementById(id); if (!el) return; new Chart(el, { type: 'doughnut', data: { labels: data.map(i=>i.name), datasets: [{ data: data.map(i=>i.value), backgroundColor:['#f59e0b','#3b82f6','#10b981','#ef4444'] }] } }); }
+function renderSparkline(id, data) { const el = document.getElementById(id); if (!el) return; new Chart(el, { type: 'line', data: { labels: data.map((_,i)=>i+1), datasets: [{ data, borderColor:'#b84520', pointRadius:0, tension:.35 }] }, options: { responsive:true, plugins:{legend:{display:false}, tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}} } }); }
+
+function buildMockSellerData() {
+    const labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    return {
+        state: 'normal', trendLabels: labels, trendGmv:[12,16,14,19,24,21,28], trendOrders:[60,72,68,83,90,88,102], trendBuyers:[45,52,50,63,71,69,80],
+        kpi: [
+            { key:'gmv', name:'GMV', value:'$128,930', trend:12.4, spark:[10,11,9,12,13,14,15] },
+            { key:'paidOrders', name:'支付订单数', value:'1,284', trend:8.2, spark:[7,8,8,9,9,10,11] },
+            { key:'buyers', name:'支付买家数', value:'1,038', trend:6.7, spark:[6,6,7,7,8,8,9] },
+            { key:'aov', name:'客单价', value:'$100.4', trend:1.9, spark:[8,9,8,9,10,9,10] },
+            { key:'cvr', name:'支付转化率', value:'4.8%', trend:0.8, spark:[4,4.1,4.1,4.3,4.4,4.6,4.8] },
+            { key:'refund', name:'退款率', value:'1.6%', trend:-0.4, spark:[2.3,2.1,2.1,1.9,1.8,1.7,1.6] },
+            { key:'pending', name:'待处理订单', value:'96', trend:-3.3, spark:[130,121,118,108,103,99,96] },
+            { key:'settle', name:'待结算金额', value:'$19,460', trend:5.6, spark:[13,13,14,15,16,18,19] },
+        ],
+        revenueMix:[{name:'商品收入',value:62},{name:'直播收入',value:18},{name:'达人带货',value:13},{name:'广告带动',value:7}],
+        trafficSources:[{name:'短视频',value:38},{name:'直播',value:24},{name:'商品卡',value:15},{name:'达人',value:12},{name:'自然',value:7},{name:'广告',value:4}],
+        orderStates:[{name:'待发货',value:32},{name:'运输中',value:41},{name:'已完成',value:180},{name:'异常',value:9}],
+        health:{score:92,delta:14},
+        topProducts:[{name:'Air Mesh Shoes',gmv:'$8,740'},{name:'Portable Blender',gmv:'$7,990'},{name:'LED Clip Light',gmv:'$7,120'}],
+        todos:[{name:'待发货订单',value:32},{name:'退款申请',value:7},{name:'低库存商品',value:12},{name:'异常物流',value:5},{name:'违规提醒',value:2}],
+    };
+}
+
+function mapSellerData({ stats, acts, favs, stores, orders }) {
+    const mock = buildMockSellerData();
+    const trend = build7DayTrend(acts.activities || []);
+    const bindings = stores.stores || [];
+    mock.kpi[1].value = String((orders.orders || []).length || mock.kpi[1].value);
+    mock.kpi[2].value = String((favs.favorites || []).length || mock.kpi[2].value);
+    mock.kpi[6].value = String((orders.orders || []).filter(o => (o.workflow_stage || '').includes('draft')).length || mock.kpi[6].value);
+    mock.trendLabels = trend.dates;
+    mock.trendOrders = trend.values.map(v => v + 50);
+    mock.kpi.push({ key:'store', name:'店铺数', value:String(bindings.length), trend:2.1, spark:[1,1,2,2,3,3,bindings.length || 3] });
+    return mock;
+}
+
+function renderSimpleModule(rootId, title, subtitle, cards, tableHeaders, tableRows) {
+    const root = document.getElementById(rootId); if (!root) return;
+    const cardHtml = cards.map(c => `<div class="soft-card rounded-2xl p-4"><div class="text-xs text-[var(--muted)]">${c.label}</div><div class="text-2xl font-black mt-1">${c.value}</div></div>`).join('');
+    const rows = tableRows.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('');
+    root.innerHTML = `<section class="section-card p-5"><h2 class="serif-title text-3xl font-bold">${title}</h2><p class="text-sm text-[var(--muted)] mt-1">${subtitle}</p><div class="seller-grid-kpi mt-4">${cardHtml}</div></section><section class="section-card p-5 mt-4 overflow-auto"><table class="data-table"><thead><tr>${tableHeaders.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></section>`;
+}
+
+function loadOrdersPage() {
+    renderSimpleModule('dashboardModuleRoot', '订单管理', '多条件筛选、状态标签、异常面板（已保留原采购接口）',
+        [{label:'待发货',value:'32'},{label:'超时发货风险',value:'6'},{label:'退款申请',value:'7'},{label:'异常物流',value:'5'}],
+        ['订单号','商品信息','买家','实付金额','数量','订单状态','支付','发货','售后','下单时间','操作'],
+        [['TK20260419001','Air Mesh Shoes / SKU-M1','Mia', '$129', '1', statusTag('warn','待发货'), statusTag('success','已支付'), statusTag('warn','待揽收'), statusTag('info','无'), '2026-04-19 10:20','查看'],['TK20260419002','Portable Blender / SKU-B8','Noah', '$88', '2', statusTag('success','已完成'), statusTag('success','已支付'), statusTag('success','已签收'), statusTag('info','关闭'), '2026-04-19 09:05','展开']]);
+}
+function loadProductsPage() {
+    renderSimpleModule('dashboardModuleRoot', '商品管理', '商品总览、商品列表、库存管理、质量建议',
+        [{label:'上架商品',value:'286'},{label:'低库存预警',value:'12'},{label:'审核中',value:'9'},{label:'违规商品',value:'2'}],
+        ['主图','标题','类目','价格区间','库存','销量','曝光','点击率','转化率','状态','操作'],
+        [['🖼️','Air Mesh Shoes','Shoes','$89-$129','42','1,248','80k','3.6%','4.8%',statusTag('success','上架'),'编辑'],['🖼️','LED Clip Light','Home','$12-$19','8','3,012','160k','2.8%','2.1%',statusTag('warn','低库存'),'补货']]);
+}
+function loadContentLivePage() { renderSimpleModule('dashboardModuleRoot', '内容与直播', '短视频与直播带货分析', [{label:'视频带货GMV',value:'$46,920'},{label:'视频CTR',value:'3.9%'},{label:'直播场次',value:'24'},{label:'直播GMV',value:'$32,840'}], ['维度','指标','值','备注'], [['短视频','CTOR','2.4%','周同比+0.2%'],['直播','平均停留时长','2m 18s','高于类目均值']]); }
+function loadAffiliatePage() { renderSimpleModule('dashboardModuleRoot', '联盟带货', '达人 / 商品 / 视频 / 直播多维分析', [{label:'达人数',value:'86'},{label:'达人GMV',value:'$39,200'},{label:'达人佣金',value:'$6,820'},{label:'合作中',value:'53'}], ['达人','带货商品','GMV','佣金','状态'], [['@luna_live','17','$8,420','$1,320',statusTag('success','合作中')],['@techdaisy','8','$4,780','$690',statusTag('info','观察')]]); }
+function loadLogisticsPage() { renderSimpleModule('dashboardModuleRoot', '物流履约', 'SLA 风险、仓库表现、物流异常', [{label:'On-time Delivery',value:'96.2%'},{label:'3-Day Delivery',value:'91.4%'},{label:'Late Dispatch',value:'2.1%'},{label:'Valid Tracking',value:'99.1%'}], ['仓库','包裹量','准时率','异常数','风险'], [['US-WH1','8,420','97.1%','42',statusTag('success','低')],['SEA-WH2','5,180','93.8%','76',statusTag('warn','中')]]); }
+function loadFinancePage() { renderSimpleModule('dashboardModuleRoot', '财务结算', '收入、结算、退款与可提现管理', [{label:'On Hold',value:'$4,820'},{label:'Processing',value:'$12,430'},{label:'Paid',value:'$108,420'},{label:'可提现',value:'$76,280'}], ['结算单号','周期','应结算','平台费用','状态'], [['ST202604-1','04/01-04/07','$23,400','$1,120',statusTag('success','已打款')],['ST202604-2','04/08-04/14','$26,800','$1,340',statusTag('info','处理中')]]); }
+function loadHealthPage() { renderSimpleModule('dashboardModuleRoot', '店铺健康', '评分 + 指标诊断 + 违规记录 + Top Opportunity', [{label:'健康分',value:'92'},{label:'商品满意度',value:'4.7/5'},{label:'客服体验',value:'95%'},{label:'违规记录',value:'2'}], ['模块','当前值','阈值','建议'], [['物流履约','93.8%','>=95%',statusTag('warn','提升海外仓备货')],['退款率','1.6%','<=2.0%',statusTag('success','保持')]]); }
+function loadMessagesPage() { renderSimpleModule('dashboardModuleRoot', '客户消息', '售前咨询、售后工单与SLA', [{label:'未读会话',value:'28'},{label:'待处理售后',value:'13'},{label:'平均响应',value:'4m 12s'},{label:'满意度',value:'95%'}], ['会话ID','用户','类型','状态','更新时间'], [['MSG-1021','Olivia','售前咨询',statusTag('info','处理中'),'10:21'],['MSG-1022','Lucas','退款咨询',statusTag('warn','待响应'),'10:08']]); }
+function loadSettingsPage() { renderSimpleModule('dashboardModuleRoot', '设置', '账号权限、偏好与自动化规则', [{label:'角色数',value:'8'},{label:'已启用自动化',value:'12'},{label:'API Token',value:'3'},{label:'告警规则',value:'16'}], ['配置项','值','状态'], [['默认站点','US',statusTag('success','启用')],['风险告警','订单异常/违规/低库存',statusTag('success','启用')]]); }
+
+
+function switchDashboardModule(moduleKey) {
+    dashboardModule = moduleKey;
+    loadDashboard();
+}
+
+function renderDashboardModule() {
+    if (dashboardModule === 'overview') {
+        const root = document.getElementById('dashboardModuleRoot');
+        if (root) root.innerHTML = emptyState('请选择经营模块', '在当前控制台内切换订单、商品、内容、物流、财务等模块。');
+        return;
+    }
+    if (dashboardModule === 'orders') return loadOrdersPage();
+    if (dashboardModule === 'products') return loadProductsPage();
+    if (dashboardModule === 'contentlive') return loadContentLivePage();
+    if (dashboardModule === 'affiliate') return loadAffiliatePage();
+    if (dashboardModule === 'logistics') return loadLogisticsPage();
+    if (dashboardModule === 'finance') return loadFinancePage();
+    if (dashboardModule === 'health') return loadHealthPage();
+    if (dashboardModule === 'messages') return loadMessagesPage();
+    if (dashboardModule === 'settings') return loadSettingsPage();
 }
 
 function setChatScene(scene) {
@@ -711,6 +836,7 @@ function updateSidebarHistoryVisibility(page) {
     const section = document.getElementById('sidebarHistorySection');
     if (!section) return;
     section.classList.remove('hidden');
+    section.classList.add('flex');
 }
 
 
