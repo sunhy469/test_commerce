@@ -840,17 +840,17 @@ function renderLocalHistoryChips() {
     const sorted = [...localChatSessions].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
     el.innerHTML = sorted.slice(0, 20).map(s => `
         <div class="chat-history-row ${s.id===activeSessionId ? 'active' : ''}">
-            <button onclick="switchChatSession('${s.id}')" class="w-full text-left px-3 pt-2.5 pb-2">
-                <div class="flex items-center gap-2">
+            <button onclick="switchChatSession('${s.id}')" class="w-full text-left px-3 py-2.5">
+                <div class="flex items-center gap-2 pr-1">
                     <div class="truncate text-xs font-semibold flex-1" title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</div>
                     ${s.unread ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white">${s.unread}</span>` : ''}
                 </div>
                 <div class="text-[10px] text-[var(--muted)] mt-1">${formatSessionTime(s.created_at)}</div>
             </button>
-            <div class="history-actions flex items-center gap-1 px-2 pb-2">
-                <button onclick="renameChatSession('${s.id}', event)" class="px-2 py-1 text-[10px] rounded-lg bg-white border">重命名</button>
-                <button onclick="togglePinSession('${s.id}', event)" class="px-2 py-1 text-[10px] rounded-lg bg-white border">${s.pinned ? '取消置顶' : '置顶'}</button>
-                <button onclick="deleteChatSession('${s.id}', event)" class="px-2 py-1 text-[10px] rounded-lg bg-white border text-[var(--accent-strong)]">删除</button>
+            <div class="history-actions-pop" role="tooltip">
+                <button onclick="renameChatSession('${s.id}', event)" class="px-2 py-1 text-[10px] rounded-md bg-white border">重命名</button>
+                <button onclick="togglePinSession('${s.id}', event)" class="px-2 py-1 text-[10px] rounded-md bg-white border">${s.pinned ? '取消置顶' : '置顶'}</button>
+                <button onclick="deleteChatSession('${s.id}', event)" class="px-2 py-1 text-[10px] rounded-md bg-white border text-[var(--accent-strong)]">删除</button>
             </div>
         </div>
     `).join('');
