@@ -74,7 +74,7 @@
         <div class="px-4 py-5 border-b border-[rgba(126,96,60,.12)]">
             <div class="flex items-center gap-3">
                 <img src="/static/images/logo.svg" alt="TradeAgent Studio Logo" class="w-10 h-10 rounded-xl object-cover bg-white/80 border border-[rgba(126,96,60,.15)]">
-                <div class="serif-title text-xl font-black text-[var(--accent-strong)]">TradeAgent Studio</div>
+                <div class="serif-title text-xl font-black text-[var(--accent-strong)]">TradeAgent</div>
             </div>
         </div>
         <div class="px-3 py-4 space-y-1 border-b border-[rgba(126,96,60,.12)]">
@@ -82,7 +82,6 @@
             <button onclick="go('dashboard')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="dashboard"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-6"/><path d="M22 20v-9"/></svg></span>控制台</button>
             <button onclick="go('ranking')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="ranking"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M6 20V9"/><path d="M12 20V4"/><path d="M18 20v-7"/></svg></span>热销排行榜</button>
             <button onclick="go('supply')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="supply"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M3 7h12v10H3z"/><path d="M15 10h3l3 3v4h-6z"/><circle cx="7" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg></span>供应链</button>
-            <button onclick="openListingModal()" class="nav-item w-full text-left px-3 py-2 text-sm font-bold"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M4 6l1 13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2l1-13"/><path d="M9 11h6"/><path d="M9 15h6"/></svg></span>商品上架</button>
             <button onclick="go('purchase')" class="nav-item w-full text-left px-3 py-2 text-sm font-bold" data-page="purchase"><span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M4 6h2l2 10h10l2-7H7"/><circle cx="10" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg></span>采购管理</button>
         </div>
         <div id="sidebarHistorySection" class="sidebar-history-panel px-3 py-4 flex-1 overflow-hidden">
@@ -148,6 +147,7 @@
                             <button onclick="bindQuickAction('upload')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">上传本地文件（支持图片）</button>
                         </div>
                     </div>
+                    <button onclick="openListingModal()" class="action-btn text-sm px-4">商品上架</button>
                     <div class="flex items-center gap-2">
                         <button onclick="prepareChat()" class="px-5 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">发送</button>
                     </div>

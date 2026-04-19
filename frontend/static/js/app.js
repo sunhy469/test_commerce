@@ -9,7 +9,7 @@ let localChatSessions = [];
 let activeSessionId = '';
 const dashboardMiniCharts = {};
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); updateSidebarHistoryVisibility('chat'); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); updateSidebarHistoryVisibility('chat'); });
 
 function go(page) {
     if (page === 'listing') {
@@ -348,6 +348,17 @@ async function loadChatHistory() {
     if (modeLabel) modeLabel.textContent = sceneLabel(chatScene);
 }
 
+function bindChatInputShortcuts() {
+    const input = document.getElementById('chatInput');
+    if (!input) return;
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            prepareChat();
+        }
+    });
+}
+
 // === Ranking ===
 function setFilter(type, val) {
     if (type === 'country') {
@@ -661,11 +672,16 @@ function initLocalChats() {
     } catch (e) {
         localChatSessions = [];
     }
-    if (!localChatSessions.length) {
+    if (!Array.isArray(localChatSessions) || !localChatSessions.length) {
+        localChatSessions = [];
         startNewChat();
         return;
     }
-    activeSessionId = localChatSessions[0].id;
+    activeSessionId = localChatSessions[0]?.id || '';
+    if (!activeSessionId) {
+        startNewChat();
+        return;
+    }
     renderLocalHistoryChips();
     restoreLocalSession(activeSessionId);
 }
@@ -720,7 +736,7 @@ function renderLocalHistoryChips() {
         el.innerHTML = '<span class="text-[var(--muted)] text-xs px-2">暂无历史会话</span>';
         return;
     }
-    const sorted = [...localChatSessions].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at));
+    const sorted = [...localChatSessions].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.created_at || 0) - new Date(a.created_at || 0));
     el.innerHTML = sorted.slice(0, 20).map(s => `
         <div class="chat-history-row ${s.id===activeSessionId ? 'active' : ''}">
             <button onclick="switchChatSession('${s.id}')" class="w-full text-left px-3 pt-2.5 pb-2">
