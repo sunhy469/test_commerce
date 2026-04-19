@@ -54,11 +54,11 @@
         #page-chat #chatMessages { min-height:52vh !important; }
         .chat-history-item.active { background:rgba(184,69,32,.08); color:var(--accent-strong); }
         .sidebar-history-panel { min-height:0; }
-        .chat-history-row { border:1px solid rgba(126,96,60,.12); border-radius:14px; background:rgba(255,255,255,.66); transition:all .2s ease; }
+        .chat-history-row { position:relative; border:1px solid rgba(126,96,60,.12); border-radius:14px; background:rgba(255,255,255,.66); transition:all .2s ease; overflow:visible; }
         .chat-history-row:hover { background:rgba(255,255,255,.9); box-shadow:0 10px 22px rgba(53,38,23,.08); }
         .chat-history-row.active { border-color:rgba(184,69,32,.3); background:rgba(184,69,32,.08); }
-        .history-actions { opacity:0; pointer-events:none; transition:opacity .2s ease; }
-        .chat-history-row:hover .history-actions { opacity:1; pointer-events:auto; }
+        .history-actions-pop { position:absolute; right:10px; top:8px; display:flex; gap:6px; padding:6px; border-radius:10px; background:rgba(255,255,255,.98); border:1px solid rgba(126,96,60,.18); box-shadow:0 10px 20px rgba(53,38,23,.12); opacity:0; pointer-events:none; transform:translateY(-4px); transition:all .18s ease; z-index:12; }
+        .chat-history-row:hover .history-actions-pop { opacity:1; pointer-events:auto; transform:translateY(0); }
 
         #quickToolsMenu button { transition: all .2s ease; }
         #page-chat .bubble-user, #page-chat .bubble-ai { font-size:14px; }
@@ -92,7 +92,7 @@
     <main class="main-area">
         <header class="sticky top-0 z-40 border-b bg-[rgba(250,245,237,.85)] backdrop-blur-xl">
             <div class="px-4 py-3 flex items-center justify-between gap-4">
-                <div><button onclick="startNewChat()" class="px-3 py-2 rounded-full soft-card text-sm">+ 新聊天</button></div>
+                <div><button type="button" onclick="startNewChat()" class="px-3 py-2 rounded-full soft-card text-sm">+ 新聊天</button></div>
                 <div class="flex items-center gap-3">
                     <button onclick="openModal('userModal')" class="px-3 py-2 rounded-full glass text-sm">用户中心</button>
                 </div>
@@ -129,7 +129,7 @@
 
 <!-- ==================== 2. AI对话 ==================== -->
 <div id="page-chat" class="page active">
-    <div class="w-full p-4 md:p-10">
+    <div class="w-full p-4 md:px-10 md:pt-14 md:pb-10">
         <section class="glass rounded-[32px] p-6 md:p-8 h-[calc(100vh-170px)] max-h-[calc(100vh-170px)] flex flex-col overflow-hidden">
             <div id="chatMessages" class="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
                 <div class="text-center text-[var(--muted)] py-24">
@@ -147,7 +147,7 @@
                             <button onclick="bindQuickAction('upload')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-sm">上传本地文件（支持图片）</button>
                         </div>
                     </div>
-                    <button onclick="openListingModalWithGuard()" class="action-btn text-sm px-4">商品上架</button>
+                    <button id="chatListingEntryBtn" onclick="openModal('listingModal')" class="action-btn text-sm px-4">商品上架</button>
                     <div class="flex items-center gap-2">
                         <button onclick="prepareChat()" class="px-5 py-3 rounded-full text-sm font-semibold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-strong))">发送</button>
                     </div>
