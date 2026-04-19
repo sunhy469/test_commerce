@@ -10,7 +10,7 @@ let activeSessionId = '';
 const dashboardMiniCharts = {};
 let dashboardModule = 'overview';
 
-document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); loadChatHistory(); });
+document.addEventListener('DOMContentLoaded', () => { loadDashboard(); initSellerCenterPages(); loadPaymentChannels(); initLocalChats(); bindOutsideClickForTools(); bindChatInputShortcuts(); bindListingEntryTrigger(); loadChatHistory(); });
 
 function go(page) {
     if (page === 'listing') {
@@ -25,6 +25,15 @@ function go(page) {
     const nav = document.querySelector(`[data-page="${page}"]`);
     if (nav) nav.classList.add('active');
     if (page === 'dashboard') loadDashboard();
+    if (page === 'orders') loadOrdersPage();
+    if (page === 'products') loadProductsPage();
+    if (page === 'contentlive') loadContentLivePage();
+    if (page === 'affiliate') loadAffiliatePage();
+    if (page === 'logistics') loadLogisticsPage();
+    if (page === 'finance') loadFinancePage();
+    if (page === 'health') loadHealthPage();
+    if (page === 'messages') loadMessagesPage();
+    if (page === 'settings') loadSettingsPage();
     if (page === 'ranking') loadRanking();
     if (page === 'chat') loadChatHistory();
     if (page === 'purchase') loadOrders();
@@ -836,7 +845,7 @@ async function hydrateLocalChatsFromBackend() {
 function updateSidebarHistoryVisibility(page) {
     const section = document.getElementById('sidebarHistorySection');
     if (!section) return;
-    section.classList.remove('hidden');
+    section.classList.toggle('hidden', page !== 'chat');
 }
 
 
