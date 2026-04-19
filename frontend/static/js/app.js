@@ -25,6 +25,15 @@ function go(page) {
     const nav = document.querySelector(`[data-page="${page}"]`);
     if (nav) nav.classList.add('active');
     if (page === 'dashboard') loadDashboard();
+    if (page === 'orders') loadOrdersPage();
+    if (page === 'products') loadProductsPage();
+    if (page === 'contentlive') loadContentLivePage();
+    if (page === 'affiliate') loadAffiliatePage();
+    if (page === 'logistics') loadLogisticsPage();
+    if (page === 'finance') loadFinancePage();
+    if (page === 'health') loadHealthPage();
+    if (page === 'messages') loadMessagesPage();
+    if (page === 'settings') loadSettingsPage();
     if (page === 'ranking') loadRanking();
     if (page === 'chat') loadChatHistory();
     if (page === 'purchase') loadOrders();
